@@ -43,8 +43,7 @@ func main() {
 		},
 	}
 	cliapp.Action = func(ctx *cli.Context) error {
-		converter.GenSimpleTable()
-		return nil
+		return converter.Build(ifile, ofile)
 	}
 
 	if err := cliapp.Run(os.Args); err != nil {
