@@ -14,7 +14,7 @@ type Feature struct {
 	Mode        string       `yaml:"mode,omitempty"`
 	Desc        string       `yaml:"desc,omitempty"`
 	Env         Env          `yaml:"env,omitempty"`
-	Tables      []Table      `yaml:"tables,omitempty"`
+	Resources   []Resource   `yaml:"resources,omitempty"`
 	Validations []Validation `yaml:"validations,omitempty"`
 	Scenarios   []Scenario   `yaml:"scenarios,omitempty"`
 }
@@ -22,7 +22,7 @@ type Env struct {
 	Source string `yaml:"source,omitempty"`
 	Lang   string `yaml:"lang,omitempty"`
 }
-type Table struct {
+type Resource struct {
 	Name  string `yaml:"name,omitempty"`
 	Usage string `yaml:"usage,omitempty"`
 }
