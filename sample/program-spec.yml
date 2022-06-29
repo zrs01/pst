@@ -10,24 +10,18 @@ modules:
           between the registered BRAVO account and the iAM
           Smart account.
         env:
-          sources:
-            - "Package: User"
-            - "Controller: registration"
+          sources: ["Package: User", "Controller: registration"]
           langs:
             - HTML, Javascript, JEE, JSP
         resources:
           - { name: TB_USER_MASTER, usage: Insert }
-        Input:
+        input:
           - name: email address
-            fields:
-              - TB_USER_MASTER_USER_EMAIL
-            cons:
-              - Max length is 20
-              - Must in lowercase
-              - Conform email format
-            remarks:
-              - Could be null if Chinese Name is not null
+            fields: [TB_USER_MASTER_USER_EMAIL]
+            cons: [Max length is 20, Must in lowercase, Conform email format]
+            remarks: [Could be null if Chinese Name is not null]
         scenarios:
           # given, when, then, and, but (reference: https://cucumber.io/docs/gherkin/reference/)
-          - when: [click 'Login with iAM Smart Button']
+          - name: Click 'Login with iAM Smart Button'
+            when: [click 'Login with iAM Smart Button']
             then: [switch to UF011A]

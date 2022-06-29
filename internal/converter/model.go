@@ -19,7 +19,7 @@ type Feature struct {
 	Scenarios []Scenario `yaml:"scenarios,omitempty"`
 }
 type Env struct {
-	Sources   []string `yaml:"source,omitempty"`
+	Sources   []string `yaml:"sources,omitempty"`
 	Languages []string `yaml:"langs,omitempty"`
 }
 type Resource struct {
@@ -33,9 +33,10 @@ type Input struct {
 	Remarks     []string `yaml:"remarks,omitempty"`
 }
 type Scenario struct {
+	Name  string   `yaml:"name,omitempty"`
 	Given []string `yaml:"given,omitempty"`
 	When  []string `yaml:"when,omitempty"`
-	Then  []string `yaml:"then,omitempty"`
 	And   []string `yaml:"and,omitempty"`
 	But   []string `yaml:"but,omitempty"`
+	Then  []string `yaml:"then,omitempty"`
 }

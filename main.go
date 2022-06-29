@@ -17,7 +17,7 @@ func main() {
 	cliapp.Commands = []*cli.Command{}
 
 	debug := false
-	var ifile, ofile string
+	var ifile, ofile, cfile string
 
 	cliapp.Flags = []cli.Flag{
 		&cli.BoolFlag{
@@ -41,9 +41,16 @@ func main() {
 			Required:    true,
 			Destination: &ofile,
 		},
+		&cli.StringFlag{
+			Name:        "config",
+			Aliases:     []string{"c"},
+			Usage:       "Config file",
+			Required:    false,
+			Destination: &cfile,
+		},
 	}
 	cliapp.Action = func(ctx *cli.Context) error {
-		return converter.Build(ifile, ofile)
+		return converter.Build(cfile, ifile, ofile)
 	}
 
 	if err := cliapp.Run(os.Args); err != nil {
