@@ -11,17 +11,89 @@ modules:
           Smart account.
         env:
           sources: ["Package: User", "Controller: registration"]
-          langs:
-            - HTML, Javascript, JEE, JSP
+          langs: ["HTML, Javascript, JEE, JSP"]
         resources:
           - { name: TB_USER_MASTER, usage: Insert }
+          - { name: TB_USER_ROLE_MAPPING, usage: Insert }
+          - { name: TB_USER_ACTION_LOG, usage: Insert }
         input:
-          - name: email address
+          - name: Email Address
             fields: [TB_USER_MASTER_USER_EMAIL]
             cons: [Max length is 20, Must in lowercase, Conform email format]
             remarks: [Could be null if Chinese Name is not null]
+          - name: Title
+            fields: [TB_USER_MASTER_USER_TITLE]
+          - name: English Name
+            fields: [TB_USER_MASTER_USER_NAME]
+          - name: Chinese Name
+            fields: [TB_USER_MASTER.USER_NAME_TC]
+          - name: Mailing Address
+            fields: [TB_USER_MASTER.USER_ADDR1, TB_USER_MASTER.USER_ADDR2]
+          - name: Full HKID Card Number / Passport No.
+            fields: [TB_USER_MASTER.HKID_NO / TB_USER_MASTER.PASSPORT_NO]
+            remarks: [Encrypted with AES-256]
+          - name: Telephone Number
+            fields: [TB_USER_MASTER.USER_PHONE]
+          - name: Fax
+            fields: [TB_USER_MASTER.USER_FAX]
+          - name: Captcha (Verification Code)
+            fields: [Nil]
+          - name: Terms and Conditions Check Box
+            fields: [Nil]
+            remarks: [Client Side Checking Only]
         scenarios:
           # given, when, then, and, but (reference: https://cucumber.io/docs/gherkin/reference/)
-          - name: Click 'Login with iAM Smart Button'
-            when: [click 'Login with iAM Smart Button']
-            then: [switch to UF011A]
+          - name: Login with iAM Smart Button Clicked
+            desc:
+              - when click 'Login with iAM Smart Button'
+              - and User scan QR code via iAM Smart App
+              - then iAM Smart QR Login page redirects users to UF011A iAM Smart Link Up page
+          - name: Online Registration Button Clicked
+            desc:
+              - when click 'Online Registration Button'
+              - then prompt dialog for requesting consent from user to provide personal information such as Chinese Name, English Name, HKID/ Passport No. via iAM Smart
+              - and redirect to UF010A Registration Screen
+              - and the system prompts users too
+          - name: Providing Personal Data with iAM Smart Button
+            desc:
+              - when click 'Providing Personal Data with iAM Smart Button'
+              - then prompt dialog for guiding users to refresh the main page of the iAM Smart mobile application to allow BRAVO to retrieve your personal information by clicking "To authorize" and "OK"
+              - and if users allow to provide personal data, the system will retrieve users’ English name, Chinese name and HKID. The system will prefill English name, Chinese name and HKID in the registration form and users are not allowed to edit these fields
+          - name: Submit Button Clicked
+            desc:
+              - when click 'Submit Button'
+              - then perform Pre-submit Validity Check.  If there is any validation errors, prompt error message and stop proceeding
+              - and if all of the above mentioned validations are passed, performs the follow procedure\n
+                1.\tInsert into TB_USER_MASTER\n
+                \t1.1\tRequest a new ID sequence\n
+                \t1.2\tEncrypt the Full HKID Card Number\n
+                \t1.3\tEncrypt the password and set TB_USER_MASTER.USER_PWD = encrypted password\n
+                \t1.4\tset TB_USER_MASTER.IAMSMART_ID = iAM Smart Account ID\n
+                \t1.5\tSet TB_USER_MASTER.LOGIN_TYPE = NORMAL\n
+                2.\tInsert into TB_USER_ROLE_MAPPING\n
+                3.\tInsert into AU_USER_ACTION_LOG
+              - and Send email to the user to the email address that was input
+        remarks:
+          - Password length is 10 and formed with uppercase characters, lowercase characters and digits.
+          - Password and HKID to be encrypted in AES-256 algorithm with a 32 characters key.
+
+
+
+      - id: UF011A
+        name: Enable User Login through iAM Smart
+        desc: A [Login with iAM Smart] button is added on the login page of BRAVO. By clicking the button, users would be redirected to a new page with a QR code shown and users should scan the QR code through iAM Smart mobile application and authorise the login request in iAM Smart mobile application.
+        env:
+          source: ["Package: User", "Controller: login"]
+          langs: ["HTMLL, Javascript, JEE, JSP"]
+        resources:
+          - { name: TB_USER_MASTER, usage: Read }
+          - { name: TB_USER_ROLE_MAPPING, usage: Read }
+          - { name: TB_USER_LOGIN_LOG, usage: Insert }
+          - { name: TB_LOOKUP_IPMAPPING, usage: Read }
+          - { name: TB_SYSTEM_PARAM, usage: Read }
+          - { name: TB_SYSTEM_OUTAGE, usage: Read }
+
+  - name: Service Delivery Program
+    features:
+      - id: DF006A
+        name: Download Electronic Copy of Plans & Documents For Public Users

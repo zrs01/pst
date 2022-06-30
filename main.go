@@ -13,7 +13,7 @@ func main() {
 	cliapp := cli.NewApp()
 	cliapp.Name = "dst"
 	cliapp.Usage = "Database schema tool"
-	cliapp.Version = "0.0.1-202206"
+	cliapp.Version = "0.0.0-202206300948"
 	cliapp.Commands = []*cli.Command{}
 
 	debug := false
