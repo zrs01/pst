@@ -9,15 +9,17 @@ import (
 	"github.com/zrs01/pst/internal/converter"
 )
 
+var version = "development"
+
 func main() {
 	cliapp := cli.NewApp()
 	cliapp.Name = "dst"
 	cliapp.Usage = "Database schema tool"
-	cliapp.Version = "0.0.1-202206"
+	cliapp.Version = version
 	cliapp.Commands = []*cli.Command{}
 
 	debug := false
-	var ifile, ofile string
+	var ifile, ofile, cfile string
 
 	cliapp.Flags = []cli.Flag{
 		&cli.BoolFlag{
@@ -41,10 +43,16 @@ func main() {
 			Required:    true,
 			Destination: &ofile,
 		},
+		&cli.StringFlag{
+			Name:        "config",
+			Aliases:     []string{"c"},
+			Usage:       "Config file",
+			Required:    false,
+			Destination: &cfile,
+		},
 	}
 	cliapp.Action = func(ctx *cli.Context) error {
-		converter.GenSimpleTable()
-		return nil
+		return converter.Build(cfile, ifile, ofile)
 	}
 
 	if err := cliapp.Run(os.Args); err != nil {
