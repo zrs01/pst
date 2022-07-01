@@ -9,11 +9,13 @@ import (
 	"github.com/zrs01/pst/internal/converter"
 )
 
+var version = "development"
+
 func main() {
 	cliapp := cli.NewApp()
 	cliapp.Name = "dst"
 	cliapp.Usage = "Database schema tool"
-	cliapp.Version = "0.0.0-202206300948"
+	cliapp.Version = version
 	cliapp.Commands = []*cli.Command{}
 
 	debug := false

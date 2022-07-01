@@ -1,7 +1,5 @@
 package converter
 
-// https://github.com/bollwarm/gooxml
-// https://github.com/shomali11/util
 import (
 	"fmt"
 	"io/ioutil"
@@ -19,6 +17,10 @@ import (
 	"github.com/thoas/go-funk"
 	"gopkg.in/yaml.v3"
 )
+
+// Reference:
+// https://github.com/bollwarm/gooxml
+// https://github.com/shomali11/util
 
 type builder struct {
 	cfg *Config
