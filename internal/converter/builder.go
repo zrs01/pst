@@ -3,6 +3,8 @@ package converter
 import (
 	"fmt"
 	"io/ioutil"
+	"path/filepath"
+	"sort"
 	"strings"
 
 	"baliance.com/gooxml"
@@ -19,70 +21,107 @@ import (
 )
 
 // Reference:
-// https://github.com/bollwarm/gooxml
-// https://github.com/shomali11/util
+// https://github.com/bollwarm/gooxml   Office Open XML documents utility
+// https://github.com/shomali11/util		A group of generic useful utility functions
 
 type builder struct {
-	cfg *Config
+	cfg   *Config
+	cfile string // config file name
+	ifile string // input file name
+	ofile string // output file name
+	dfile string // .docx file name
 }
 
-func Build(cfile, ifile, ofile string) error {
-	b := &builder{}
-	spec, err := b.loadData(ifile)
-	if err != nil {
-		return eris.Wrapf(err, "failed to load %s", ifile)
-	}
-	b.buildSpec(spec, cfile, ofile)
-	return nil
+func Build(cfile, ifile, ofile string, tfile string) error {
+	b := &builder{cfile: cfile, ifile: ifile, ofile: ofile, dfile: tfile}
+	return b.buildSpec()
 }
 
-func (b *builder) loadData(infile string) (*ProgSpec, error) {
-	yamlFile, err := ioutil.ReadFile(infile)
+func (b *builder) loadData(file string) (*ProgSpec, error) {
+	yamlFile, err := ioutil.ReadFile(file)
 	if err != nil {
-		return nil, eris.Wrapf(err, "failed to read the file %s", infile)
+		return nil, eris.Wrap(err, "failed to read the file")
 	}
 	var d ProgSpec
 	if err := yaml.Unmarshal(yamlFile, &d); err != nil {
-		return nil, eris.Wrapf(err, "failed to unmarshal the file %s", infile)
+		return nil, eris.Wrapf(err, "failed to unmarshal the file %s", file)
 	}
 	return &d, nil
 }
 
-func (b *builder) buildSpec(data *ProgSpec, cfile, ofile string) error {
-	cfg, err := NewConfig(cfile)
+func (b *builder) resolveInFile(ifile string) (*[]string, error) {
+	files := []string{}
+	ifiles := strings.Split(ifile, ",")
+	for _, ifile := range ifiles {
+		fs, err := filepath.Glob(ifile)
+		if err != nil {
+			return nil, eris.Wrap(err, "failed to glob the file")
+		}
+		if len(fs) == 0 {
+			return nil, eris.Errorf("no such file: %s", ifile)
+		}
+		files = append(files, fs...)
+	}
+	sort.Strings(files)
+	return &files, nil
+}
+
+func (b *builder) buildSpec() error {
+	cfg, err := NewConfig(b.cfile)
 	if err != nil {
-		return eris.Wrapf(err, "failed to load the configuration file %s", cfile)
+		return eris.Wrapf(err, "failed to load the configuration file %s", b.cfile)
 	}
 	b.cfg = cfg
 
-	doc := document.New()
-	// set to A4 size (https://stackoverflow.com/questions/57581695/detecting-and-setting-paper-size-in-word-js-api-or-ooxml)
-	doc.X().Body.SectPr = wml.NewCT_SectPr()
-	doc.X().Body.SectPr.PgSz = &wml.CT_PageSz{
-		WAttr: &sharedTypes.ST_TwipsMeasure{
-			ST_UnsignedDecimalNumber: gooxml.Uint64(uint64(11906)),
-		},
-		HAttr: &sharedTypes.ST_TwipsMeasure{
-			ST_UnsignedDecimalNumber: gooxml.Uint64(uint64(16838)),
-		},
+	var doc *document.Document
+	if xstrings.IsBlank(b.dfile) {
+		doc = document.New()
+		// set to A4 size (https://stackoverflow.com/questions/57581695/detecting-and-setting-paper-size-in-word-js-api-or-ooxml)
+		doc.X().Body.SectPr = wml.NewCT_SectPr()
+		doc.X().Body.SectPr.PgSz = &wml.CT_PageSz{
+			WAttr: &sharedTypes.ST_TwipsMeasure{
+				ST_UnsignedDecimalNumber: gooxml.Uint64(uint64(11906)),
+			},
+			HAttr: &sharedTypes.ST_TwipsMeasure{
+				ST_UnsignedDecimalNumber: gooxml.Uint64(uint64(16838)),
+			},
+		}
+	} else {
+		if doc, err = document.Open(b.dfile); err != nil {
+			return eris.Wrapf(err, "failed to open the document %s", b.dfile)
+		}
 	}
 	fixBulletIndentation(doc)
 
-	// header
-	newParaBuilder(doc.AddParagraph()).SetStyle("Heading1").SetText("PROGRAM DESCRIPTION").Build()
-
-	for i, module := range data.Modules {
-		newParaBuilder(doc.AddParagraph()).SetStyle("Heading2").SetText(module.Name).Build()
-		for _, feature := range module.Features {
-			doc.AddParagraph()
-			newParaBuilder(doc.AddParagraph()).SetStyle("Heading3").SetText(feature.Name).Build()
-			b.buildFeature(doc, &feature)
-		}
-		if i < len(data.Modules)-1 {
-			newParaBuilder(doc.AddParagraph()).SetPageBreak().Build()
-		}
+	// support multiple files
+	files, err := b.resolveInFile(b.ifile)
+	if err != nil {
+		return eris.Wrap(err, "failed to resolve the source file")
 	}
-	doc.SaveToFile(ofile)
+	for _, file := range *files {
+		data, err := b.loadData(file)
+		if err != nil {
+			return eris.Wrap(err, "failed to load the file")
+		}
+
+		// header
+		newParaBuilder(doc.AddParagraph()).SetStyle("Heading1").SetText("PROGRAM DESCRIPTION").Build()
+
+		for _, module := range data.Modules {
+			newParaBuilder(doc.AddParagraph()).SetStyle("Heading2").SetText(module.Name).Build()
+			for _, feature := range module.Features {
+				doc.AddParagraph()
+				newParaBuilder(doc.AddParagraph()).SetStyle("Heading3").SetText(feature.Name).Build()
+				b.buildFeature(doc, &feature)
+			}
+			// if i < len(data.Modules)-1 {
+			newParaBuilder(doc.AddParagraph()).SetPageBreak().Build()
+			// }
+		}
+
+	}
+
+	doc.SaveToFile(b.ofile)
 	return nil
 }
 

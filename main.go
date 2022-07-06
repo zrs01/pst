@@ -13,46 +13,53 @@ var version = "development"
 
 func main() {
 	cliapp := cli.NewApp()
-	cliapp.Name = "dst"
-	cliapp.Usage = "Database schema tool"
+	cliapp.Name = "pst"
+	cliapp.Usage = "Program specfication tool"
 	cliapp.Version = version
 	cliapp.Commands = []*cli.Command{}
 
 	debug := false
-	var ifile, ofile, cfile string
+	var ifile, ofile, cfile, dfile string
 
 	cliapp.Flags = []cli.Flag{
 		&cli.BoolFlag{
 			Name:        "debug",
 			Aliases:     []string{"d"},
-			Usage:       "Debug mode",
+			Usage:       "debug mode",
 			Required:    false,
 			Destination: &debug,
 		},
 		&cli.StringFlag{
+			Name:        "config",
+			Aliases:     []string{"c"},
+			Usage:       "config file",
+			Required:    false,
+			Destination: &cfile,
+		},
+		&cli.StringFlag{
 			Name:        "input",
 			Aliases:     []string{"i"},
-			Usage:       "Input file",
+			Usage:       "input file",
 			Required:    true,
 			Destination: &ifile,
 		},
 		&cli.StringFlag{
 			Name:        "output",
 			Aliases:     []string{"o"},
-			Usage:       "Output file",
+			Usage:       "output file",
 			Required:    true,
 			Destination: &ofile,
 		},
 		&cli.StringFlag{
-			Name:        "config",
-			Aliases:     []string{"c"},
-			Usage:       "Config file",
+			Name:        "document",
+			Aliases:     []string{"m"},
+			Usage:       "existing .docx file",
 			Required:    false,
-			Destination: &cfile,
+			Destination: &dfile,
 		},
 	}
 	cliapp.Action = func(ctx *cli.Context) error {
-		return converter.Build(cfile, ifile, ofile)
+		return converter.Build(cfile, ifile, ofile, dfile)
 	}
 
 	if err := cliapp.Run(os.Args); err != nil {

@@ -5,7 +5,7 @@ Tool to generate program specification document in .docx format
 
 ```sh
 NAME:
-   dst - Database schema tool
+   pst - Program specfication tool
 
 USAGE:
    pst [global options] command [command options] [arguments...]
@@ -17,25 +17,34 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   --config value, -c value  Config file
-   --debug, -d               Debug mode (default: false)
-   --help, -h                show help (default: false)
-   --input value, -i value   Input file
-   --output value, -o value  Output file
-   --version, -v             print the version (default: false)
+   --config value, -c value    config file
+   --debug, -d                 debug mode (default: false)
+   --document value, -m value  existing .docx file
+   --help, -h                  show help (default: false)
+   --input value, -i value     input file
+   --output value, -o value    output file
+   --version, -v               print the version (default: false)
 ```
 
 
 ### Example
 
 ```sh
-# -- Definition file
-# example/example.yml
+# -- Sample file can be found at example/example.yml
 
-
-# -- Generate
+# -- Generate in new document
 $ pst -i sample.yml -o sample.docx
+
+# -- Append to existing document
+$ pst -i sample.yml -o sample.docx -m spec.docx
+
+# -- Support multiple files
+$ pst -i sample1.yml,sample2.yml,sample3.yml -o sample.docx
+
+# -- Support wildcard input files
+$ pst -i samp*.yml -o sample.docx
 ```
+
 
 ## Configuration
 
