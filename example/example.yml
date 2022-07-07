@@ -13,34 +13,37 @@ modules:
           sources: ["Package: User", "Controller: registration"]
           langs: ["HTML, Javascript, JEE, JSP"]
         resources:
-          - { name: TB_USER_MASTER, usage: Insert }
+          - { name: TB_USER_MASTER, usage: "Insert, Read" }
           - { name: TB_USER_ROLE_MAPPING, usage: Insert }
           - { name: TB_USER_ACTION_LOG, usage: Insert }
         input:
           - name: Email Address
-            fields: [TB_USER_MASTER_USER_EMAIL]
-            cons: [Max length is 20, Must in lowercase, Conform email format]
-            remarks: [Could be null if Chinese Name is not null]
+            fields: TB_USER_MASTER_USER_EMAIL
+            cons:
+              - Max length is 20
+              - Must in lowercase
+              - Conform email format
+            remarks: Could be null if Chinese Name is not null
           - name: Title
-            fields: [TB_USER_MASTER_USER_TITLE]
+            fields: TB_USER_MASTER_USER_TITLE
           - name: English Name
-            fields: [TB_USER_MASTER_USER_NAME]
+            fields: TB_USER_MASTER_USER_NAME
           - name: Chinese Name
-            fields: [TB_USER_MASTER.USER_NAME_TC]
+            fields: TB_USER_MASTER.USER_NAME_TC
           - name: Mailing Address
             fields: [TB_USER_MASTER.USER_ADDR1, TB_USER_MASTER.USER_ADDR2]
           - name: Full HKID Card Number / Passport No.
-            fields: [TB_USER_MASTER.HKID_NO / TB_USER_MASTER.PASSPORT_NO]
-            remarks: [Encrypted with AES-256]
+            fields: TB_USER_MASTER.HKID_NO / TB_USER_MASTER.PASSPORT_NO
+            remarks: Encrypted with AES-256
           - name: Telephone Number
-            fields: [TB_USER_MASTER.USER_PHONE]
+            fields: TB_USER_MASTER.USER_PHONE
           - name: Fax
-            fields: [TB_USER_MASTER.USER_FAX]
+            fields: TB_USER_MASTER.USER_FAX
           - name: Captcha (Verification Code)
-            fields: [Nil]
+            fields: Nil
           - name: Terms and Conditions Check Box
-            fields: [Nil]
-            remarks: [Client Side Checking Only]
+            fields: Nil
+            remarks: Client Side Checking Only
         scenarios:
           # given, when, then, and, but (reference: https://cucumber.io/docs/gherkin/reference/)
           - name: Login with iAM Smart Button Clicked

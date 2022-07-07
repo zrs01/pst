@@ -9,29 +9,29 @@ type Module struct {
 	Features []Feature `yaml:"features,omitempty"`
 }
 type Feature struct {
-	Id        string     `yaml:"id,omitempty"`
-	Name      string     `yaml:"name,omitempty"`
-	Mode      string     `yaml:"mode,omitempty"`
-	Desc      string     `yaml:"desc,omitempty"`
-	Env       Env        `yaml:"env,omitempty"`
-	Resources []Resource `yaml:"resources,omitempty"`
-	Input     []Input    `yaml:"input,omitempty"`
-	Scenarios []Scenario `yaml:"scenarios,omitempty"`
-	Remarks   []string   `yaml:"remarks,omitempty"`
+	Id        string      `yaml:"id,omitempty"`
+	Name      string      `yaml:"name,omitempty"`
+	Mode      string      `yaml:"mode,omitempty"`
+	Desc      string      `yaml:"desc,omitempty"`
+	Env       Env         `yaml:"env,omitempty"`
+	Resources []Resource  `yaml:"resources,omitempty"`
+	Input     []Input     `yaml:"input,omitempty"`
+	Scenarios []Scenario  `yaml:"scenarios,omitempty"`
+	Remarks   interface{} `yaml:"remarks,omitempty"`
 }
 type Env struct {
-	Sources   []string `yaml:"sources,omitempty"`
-	Languages []string `yaml:"langs,omitempty"`
+	Sources   interface{} `yaml:"sources,omitempty"`
+	Languages interface{} `yaml:"langs,omitempty"`
 }
 type Resource struct {
-	Name  string `yaml:"name,omitempty"`
-	Usage string `yaml:"usage,omitempty"`
+	Name  string      `yaml:"name,omitempty"`
+	Usage interface{} `yaml:"usage,omitempty"`
 }
 type Input struct {
-	Name        string   `yaml:"name,omitempty"`
-	Fields      []string `yaml:"fields,omitempty"`
-	Constraints []string `yaml:"cons,omitempty"`
-	Remarks     []string `yaml:"remarks,omitempty"`
+	Name        string      `yaml:"name,omitempty"`
+	Fields      interface{} `yaml:"fields,omitempty"`
+	Constraints interface{} `yaml:"cons,omitempty"`
+	Remarks     interface{} `yaml:"remarks,omitempty"`
 }
 type Scenario struct {
 	Name string   `yaml:"name,omitempty"`

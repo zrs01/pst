@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/rotisserie/eris"
 	"github.com/shomali11/util/xconditions"
 	"github.com/shomali11/util/xstrings"
+	"github.com/sirupsen/logrus"
 	"github.com/thoas/go-funk"
 	"gopkg.in/yaml.v3"
 )
@@ -161,68 +163,73 @@ func (b *builder) buildFeature(doc *document.Document, feature *Feature) error {
 
 	tbMain := createTable(false)
 	rb.Reset(tbMain.AddRow()).AddCell(
-		newCellAttr().SetText("Program ID").SetWidth(w).SetBold(true).setBorderTopBottom(),
-		newCellAttr().SetText(feature.Id).setBorderTopBottom()).Build()
+		NewCellBuilder().SetText("Program ID").SetWidth(w).SetBold(true).SetBorderTopBottom(),
+		NewCellBuilder().SetText(feature.Id).SetBorderTopBottom()).Build()
 	rb.Reset(tbMain.AddRow()).AddCell(
-		newCellAttr().SetText("Mode").SetWidth(w).SetBold(true).setBorderTopBottom(),
-		newCellAttr().SetText(feature.Mode).setBorderTopBottom()).Build()
+		NewCellBuilder().SetText("Mode").SetWidth(w).SetBold(true).SetBorderTopBottom(),
+		NewCellBuilder().SetText(feature.Mode).SetBorderTopBottom()).Build()
 	rb.Reset(tbMain.AddRow()).AddCell(
-		newCellAttr().SetText("Program Name").SetWidth(w).SetBold(true).setBorderTopBottom(),
-		newCellAttr().SetText(feature.Name).setBorderTopBottom()).Build()
+		NewCellBuilder().SetText("Program Name").SetWidth(w).SetBold(true).SetBorderTopBottom(),
+		NewCellBuilder().SetText(feature.Name).SetBorderTopBottom()).Build()
 	rb.Reset(tbMain.AddRow()).AddCell(
-		newCellAttr().SetText("Description").SetWidth(w).SetBold(true).setBorderTopBottom(),
-		newCellAttr().SetText(feature.Desc).setBorderTopBottom()).Build()
+		NewCellBuilder().SetText("Description").SetWidth(w).SetBold(true).SetBorderTopBottom(),
+		NewCellBuilder().SetText(feature.Desc).SetBorderTopBottom()).Build()
 
-	if len(feature.Env.Sources) > 0 || len(feature.Env.Languages) > 0 {
+	if (feature.Env.Sources != nil && !reflect.ValueOf(feature.Env.Sources).IsZero()) ||
+		(feature.Env.Languages != nil && !reflect.ValueOf(feature.Env.Languages).IsZero()) {
 		rb.Reset(tbMain.AddRow()).AddCell(
-			newCellAttr().SetText("Program Environment:").SetBold(true).setColspan(2).setBackgroundColor(gray).setBorderTopBottom()).Build()
-		rb.Reset(tbMain.AddRow()).AddCell(
-			newCellAttr().SetText("Program Source").SetWidth(w).SetBold(true).setBorderTopBottom(),
-			newCellAttr().SetText(feature.Env.Sources).setBorderTopBottom()).Build()
-		rb.Reset(tbMain.AddRow()).AddCell(
-			newCellAttr().SetText("Language").SetWidth(w).SetBold(true).setBorderTopBottom(),
-			newCellAttr().SetText(feature.Env.Languages).setBorderTopBottom()).Build()
+			NewCellBuilder().SetText("Program Environment:").SetBold(true).SetColspan(2).SetBackgroundColor(gray).SetBorderTopBottom()).Build()
+		if feature.Env.Sources != nil && !reflect.ValueOf(feature.Env.Sources).IsZero() {
+			rb.Reset(tbMain.AddRow()).AddCell(
+				NewCellBuilder().SetText("Program Source").SetWidth(w).SetBold(true).SetBorderTopBottom(),
+				NewCellBuilder().SetText(feature.Env.Sources).SetBorderTopBottom()).Build()
+		}
+		if feature.Env.Languages != nil && !reflect.ValueOf(feature.Env.Languages).IsZero() {
+			rb.Reset(tbMain.AddRow()).AddCell(
+				NewCellBuilder().SetText("Language").SetWidth(w).SetBold(true).SetBorderTopBottom(),
+				NewCellBuilder().SetText(feature.Env.Languages).SetBorderTopBottom()).Build()
+		}
 	}
 
 	if len(feature.Resources) > 0 {
 		// Resources
 		tbRes := createTable(true)
 		rb.Reset(tbRes.AddRow()).AddCell(
-			newCellAttr().SetText("Resources:").SetBold(true).setColspan(2).setBackgroundColor(gray).setBorderTopBottom()).Build()
+			NewCellBuilder().SetText("Resources:").SetBold(true).SetColspan(2).SetBackgroundColor(gray).SetBorderTopBottom()).Build()
 		rb.Reset(tbRes.AddRow()).AddCell(
-			newCellAttr().SetText("Table/File").SetWidth(w).SetBold(true).setBackgroundColor(lightgray).setBorderTopBottom(),
-			newCellAttr().SetText("Usage").SetBold(true).setBackgroundColor(lightgray).setBorderTopBottom()).Build()
+			NewCellBuilder().SetText("Table/File").SetWidth(w).SetBold(true).SetBackgroundColor(lightgray).SetBorderTopBottom(),
+			NewCellBuilder().SetText("Usage").SetBold(true).SetBackgroundColor(lightgray).SetBorderTopBottom()).Build()
 		for _, res := range feature.Resources {
 			rb.Reset(tbRes.AddRow()).AddCell(
-				newCellAttr().SetText(res.Name).SetWidth(w).setBorderTopBottom(),
-				newCellAttr().SetText(res.Usage).setBorderTopBottom()).Build()
+				NewCellBuilder().SetText(res.Name).SetWidth(w).SetBorderTopBottom(),
+				NewCellBuilder().SetText(res.Usage).SetBorderTopBottom()).Build()
 		}
 
 		// Input
 		if len(feature.Input) > 0 {
 			tbInp := createTable(true)
 			rb.Reset(tbInp.AddRow()).AddCell(
-				newCellAttr().SetText("Input:").SetBold(true).setColspan(2).setBackgroundColor(gray).setBorderTopBottom()).Build()
+				NewCellBuilder().SetText("Input:").SetBold(true).SetColspan(2).SetBackgroundColor(gray).SetBorderTopBottom()).Build()
 			for i, inp := range feature.Input {
 				rb.Reset(tbInp.AddRow()).AddCell(
-					newCellAttr().SetText(fmt.Sprintf("%d. %s", i+1, inp.Name)).SetBold(true).setColspan(2).setBackgroundColor(lightgray).setBorderTopBottom(),
+					NewCellBuilder().SetText(fmt.Sprintf("%d. %s", i+1, inp.Name)).SetBold(true).SetColspan(2).SetBackgroundColor(lightgray).SetBorderTopBottom(),
 				).Build()
-				if len(inp.Fields) > 0 {
+				if inp.Fields != nil && !reflect.ValueOf(inp.Fields).IsZero() {
 					rb.Reset(tbInp.AddRow()).AddCell(
-						newCellAttr().SetText("Fields").SetBold(true).SetWidth(w),
-						newCellAttr().SetText(inp.Fields),
+						NewCellBuilder().SetText("Fields").SetBold(true).SetWidth(w),
+						NewCellBuilder().SetText(inp.Fields),
 					).Build()
 				}
-				if len(inp.Constraints) > 0 {
+				if inp.Constraints != nil && !reflect.ValueOf(inp.Constraints).IsZero() {
 					rb.Reset(tbInp.AddRow()).AddCell(
-						newCellAttr().SetText("Constraints").SetBold(true).SetWidth(w),
-						newCellAttr().SetText(inp.Constraints).setBullet(&nd),
+						NewCellBuilder().SetText("Constraints").SetBold(true).SetWidth(w),
+						NewCellBuilder().SetText(inp.Constraints).SetBullet(&nd),
 					).Build()
 				}
-				if len(inp.Remarks) > 0 {
+				if inp.Remarks != nil && !reflect.ValueOf(inp.Remarks).IsZero() {
 					rb.Reset(tbInp.AddRow()).AddCell(
-						newCellAttr().SetText("Remarks").SetBold(true).SetWidth(w),
-						newCellAttr().SetText(inp.Remarks).setBullet(&nd),
+						NewCellBuilder().SetText("Remarks").SetBold(true).SetWidth(w),
+						NewCellBuilder().SetText(inp.Remarks).SetBullet(&nd),
 					).Build()
 				}
 			}
@@ -232,29 +239,29 @@ func (b *builder) buildFeature(doc *document.Document, feature *Feature) error {
 		if len(feature.Scenarios) > 0 {
 			tbScn := createTable(true)
 			rb.Reset(tbScn.AddRow()).AddCell(
-				newCellAttr().SetText("Scenarios:").SetBold(true).setColspan(2).setBackgroundColor(gray).setBorderTopBottom()).Build()
+				NewCellBuilder().SetText("Scenarios:").SetBold(true).SetColspan(2).SetBackgroundColor(gray).SetBorderTopBottom()).Build()
 			for i, scn := range feature.Scenarios {
 				rb.Reset(tbScn.AddRow()).AddCell(
-					newCellAttr().SetText(fmt.Sprintf("%d. %s", i+1, scn.Name)).SetBold(true).setBackgroundColor(lightgray).setColspan(2).setBorderTopBottom(),
+					NewCellBuilder().SetText(fmt.Sprintf("%d. %s", i+1, scn.Name)).SetBold(true).SetBackgroundColor(lightgray).SetColspan(2).SetBorderTopBottom(),
 				).Build()
 
 				for _, action := range scn.Desc {
 					keyword, others := splitScenarioWord(action)
 					rb.Reset(tbScn.AddRow()).AddCell(
-						newCellAttr().SetText(keyword).SetBold(true).SetAlignment(wml.ST_JcLeft).SetWidth(10),
-						newCellAttr().SetText(others),
+						NewCellBuilder().SetText(keyword).SetBold(true).SetAlignment(wml.ST_JcLeft).SetWidth(10),
+						NewCellBuilder().SetText(others),
 					).Build()
 				}
 			}
 		}
 
 		// Remarks
-		if len(feature.Remarks) > 0 {
+		if feature.Remarks != nil && !reflect.ValueOf(feature.Remarks).IsZero() {
 			tbRmk := createTable(true)
 			rb.Reset(tbRmk.AddRow()).AddCell(
-				newCellAttr().SetText("Remarks:").SetBold(true).setBackgroundColor(gray).setBorderTopBottom()).Build()
+				NewCellBuilder().SetText("Remarks:").SetBold(true).SetBackgroundColor(gray).SetBorderTopBottom()).Build()
 			rb.Reset(tbRmk.AddRow()).AddCell(
-				newCellAttr().SetText(feature.Remarks).setBullet(&nd),
+				NewCellBuilder().SetText(feature.Remarks).SetBullet(&nd),
 			).Build()
 		}
 
@@ -269,7 +276,12 @@ func toStrArray(v interface{}) []string {
 	case string:
 		text = []string{t}
 	case []string:
-		text = t
+		text = append(text, t...)
+	case []interface{}:
+		for _, value := range t {
+			content := strings.TrimSpace(value.(string))
+			text = append(text, content)
+		}
 	}
 	return text
 }
@@ -346,100 +358,26 @@ func (p *paraBuilder) Build() {
 /* -------------------------------------------------------------------------- */
 
 type rowBuilder struct {
-	cfg       *Config
-	row       document.Row
-	cellAttrs []*cellAttr
+	cfg         *Config
+	row         document.Row
+	cellBuilder []*CellBuilder
 }
 
 func (r *rowBuilder) Reset(row document.Row) *rowBuilder {
 	r.row = row
-	r.cellAttrs = []*cellAttr{}
+	r.cellBuilder = []*CellBuilder{}
 	return r
 }
 
-func (r *rowBuilder) AddCell(attrs ...*cellAttr) *rowBuilder {
-	r.cellAttrs = append(r.cellAttrs, attrs...)
+func (r *rowBuilder) AddCell(attrs ...*CellBuilder) *rowBuilder {
+	r.cellBuilder = append(r.cellBuilder, attrs...)
 	return r
 }
 
-func (c *rowBuilder) Build() {
-	c.BuildCustom(nil)
-}
-func (c *rowBuilder) BuildCustom(customContent func(cell *document.Cell)) {
-	bSty := wml.ST_BorderSingle
-	bCol := color.Auto
-	bThk := measurement.Distance(0.5 * measurement.Point)
-
-	for _, attr := range c.cellAttrs {
-		nc := c.row.AddCell()
-
-		// border
-		if attr.borderBottom {
-			nc.Properties().Borders().SetBottom(bSty, bCol, bThk)
-		}
-		if attr.borderLeft {
-			nc.Properties().Borders().SetLeft(bSty, bCol, bThk)
-		}
-		if attr.borderRight {
-			nc.Properties().Borders().SetRight(bSty, bCol, bThk)
-		}
-		if attr.borderTop {
-			nc.Properties().Borders().SetTop(bSty, bCol, bThk)
-		}
-		if attr.borderInsideHorizontal {
-			nc.Properties().Borders().SetInsideHorizontal(bSty, bCol, bThk)
-		}
-		if attr.borderInsideVertical {
-			nc.Properties().Borders().SetInsideVertical(bSty, bCol, bThk)
-		}
-		// width
-		if attr.width > 0 {
-			nc.Properties().SetWidthPercent(float64(attr.width))
-		}
-		// colspan
-		if attr.colspan > 0 {
-			nc.Properties().SetColumnSpan(attr.colspan)
-		}
-		// background color
-		if attr.backgroundColor != nil {
-			nc.Properties().SetShading(wml.ST_ShdSolid, *attr.backgroundColor, color.Auto)
-		}
-		if customContent != nil {
-			customContent(&nc)
-		} else {
-			if len(attr.text) == 0 {
-				p := nc.AddParagraph()
-				p.AddRun().AddText("")
-			} else {
-				for _, t := range attr.text {
-					p := nc.AddParagraph()
-					if attr.alignment != wml.ST_JcUnset {
-						p.Properties().SetAlignment(attr.alignment)
-					}
-					tab := ""
-					if attr.bullet != nil && len(attr.text) > 1 {
-						p.SetNumberingLevel(0)
-						p.SetNumberingDefinition(*attr.bullet)
-						tab = "\t"
-					}
-					lines := strings.Split(t, "\\n")
-					for i, line := range lines {
-						line := strings.ReplaceAll(line, "\\t", "\t")
-						run := p.AddRun()
-						run.Properties().SetBold(attr.bold)
-						run.Properties().SetFontFamily(xconditions.IfThenElse(attr.fontFamily != "", attr.fontFamily, c.cfg.FontFamily).(string))
-						run.Properties().SetSize(measurement.Distance(xconditions.IfThenElse(attr.fontSize > 0, attr.fontSize, c.cfg.FontSize).(int)))
-						if i == 0 {
-							run.AddText(tab + line)
-						} else {
-							// multi-line text
-							run.AddBreak()
-							run.AddText(line)
-						}
-					}
-				}
-			}
-		}
+func (r *rowBuilder) Build() {
+	for _, attr := range r.cellBuilder {
+		nc := r.row.AddCell()
+		attr.SetConfig(r.cfg).SetCell(&nc).Build()
 	}
 }
 
@@ -447,7 +385,9 @@ func (c *rowBuilder) BuildCustom(customContent func(cell *document.Cell)) {
 /*                                CELL BUILDER                                */
 /* -------------------------------------------------------------------------- */
 
-type cellAttr struct {
+type CellBuilder struct {
+	cfg                    *Config
+	cell                   *document.Cell
 	fontFamily             string
 	fontSize               int
 	bold                   bool
@@ -465,66 +405,74 @@ type cellAttr struct {
 	alignment              wml.ST_Jc
 }
 
-func newCellAttr() *cellAttr {
-	return &cellAttr{}
+func NewCellBuilder() *CellBuilder {
+	return &CellBuilder{}
 }
-func (c *cellAttr) SetFontFamily(ff string) *cellAttr {
+func (c *CellBuilder) SetConfig(cfg *Config) *CellBuilder {
+	c.cfg = cfg
+	return c
+}
+func (c *CellBuilder) SetCell(dc *document.Cell) *CellBuilder {
+	c.cell = dc
+	return c
+}
+func (c *CellBuilder) SetFontFamily(ff string) *CellBuilder {
 	c.fontFamily = ff
 	return c
 }
-func (c *cellAttr) SetFontSize(fs int) *cellAttr {
+func (c *CellBuilder) SetFontSize(fs int) *CellBuilder {
 	c.fontSize = fs
 	return c
 }
-func (c *cellAttr) SetBold(b bool) *cellAttr {
+func (c *CellBuilder) SetBold(b bool) *CellBuilder {
 	c.bold = b
 	return c
 }
-func (c *cellAttr) SetWidth(w int) *cellAttr {
+func (c *CellBuilder) SetWidth(w int) *CellBuilder {
 	c.width = w
 	return c
 }
-func (c *cellAttr) setColspan(cols int) *cellAttr {
+func (c *CellBuilder) SetColspan(cols int) *CellBuilder {
 	c.colspan = cols
 	return c
 }
-func (c *cellAttr) SetText(v interface{}) *cellAttr {
+func (c *CellBuilder) SetText(v interface{}) *CellBuilder {
 	c.text = toStrArray(v)
 	return c
 }
-func (c *cellAttr) setBullet(b *document.NumberingDefinition) *cellAttr {
+func (c *CellBuilder) SetBullet(b *document.NumberingDefinition) *CellBuilder {
 	c.bullet = b
 	return c
 }
-func (c *cellAttr) setBackgroundColor(color color.Color) *cellAttr {
+func (c *CellBuilder) SetBackgroundColor(color color.Color) *CellBuilder {
 	c.backgroundColor = &color
 	return c
 }
-func (c *cellAttr) setBorderBottom() *cellAttr {
+func (c *CellBuilder) SetBorderBottom() *CellBuilder {
 	c.borderBottom = true
 	return c
 }
-func (c *cellAttr) setBorderLeft() *cellAttr {
+func (c *CellBuilder) SetBorderLeft() *CellBuilder {
 	c.borderLeft = true
 	return c
 }
-func (c *cellAttr) setBorderRight() *cellAttr {
+func (c *CellBuilder) SetBorderRight() *CellBuilder {
 	c.borderRight = true
 	return c
 }
-func (c *cellAttr) setBorderTop() *cellAttr {
+func (c *CellBuilder) SetBorderTop() *CellBuilder {
 	c.borderTop = true
 	return c
 }
-func (c *cellAttr) setBorderInsideHorizontal() *cellAttr {
+func (c *CellBuilder) SetBorderInsideHorizontal() *CellBuilder {
 	c.borderInsideHorizontal = true
 	return c
 }
-func (c *cellAttr) setBorderInsideVertical() *cellAttr {
+func (c *CellBuilder) SetBorderInsideVertical() *CellBuilder {
 	c.borderInsideVertical = true
 	return c
 }
-func (c *cellAttr) setBorderAll() *cellAttr {
+func (c *CellBuilder) SetBorderAll() *CellBuilder {
 	c.borderBottom = true
 	c.borderLeft = true
 	c.borderRight = true
@@ -533,12 +481,83 @@ func (c *cellAttr) setBorderAll() *cellAttr {
 	c.borderInsideVertical = true
 	return c
 }
-func (c *cellAttr) setBorderTopBottom() *cellAttr {
+func (c *CellBuilder) SetBorderTopBottom() *CellBuilder {
 	c.borderBottom = true
 	c.borderTop = true
 	return c
 }
-func (c *cellAttr) SetAlignment(align wml.ST_Jc) *cellAttr {
+func (c *CellBuilder) SetAlignment(align wml.ST_Jc) *CellBuilder {
 	c.alignment = align
 	return c
+}
+func (c *CellBuilder) Build() {
+	if c.cell == nil {
+		logrus.Warn("failed to build the cell, missing cell instance")
+		return
+	}
+
+	bSty := wml.ST_BorderSingle
+	bCol := color.Auto
+	bThk := measurement.Distance(0.5 * measurement.Point)
+
+	if c.borderBottom {
+		c.cell.Properties().Borders().SetBottom(bSty, bCol, bThk)
+	}
+	if c.borderLeft {
+		c.cell.Properties().Borders().SetLeft(bSty, bCol, bThk)
+	}
+	if c.borderRight {
+		c.cell.Properties().Borders().SetRight(bSty, bCol, bThk)
+	}
+	if c.borderTop {
+		c.cell.Properties().Borders().SetTop(bSty, bCol, bThk)
+	}
+	if c.borderInsideHorizontal {
+		c.cell.Properties().Borders().SetInsideHorizontal(bSty, bCol, bThk)
+	}
+	if c.borderInsideVertical {
+		c.cell.Properties().Borders().SetInsideVertical(bSty, bCol, bThk)
+	}
+	if c.width > 0 {
+		c.cell.Properties().SetWidthPercent(float64(c.width))
+	}
+	if c.colspan > 0 {
+		c.cell.Properties().SetColumnSpan(c.colspan)
+	}
+	if c.backgroundColor != nil {
+		c.cell.Properties().SetShading(wml.ST_ShdSolid, *c.backgroundColor, color.Auto)
+	}
+	if len(c.text) == 0 {
+		p := c.cell.AddParagraph()
+		p.AddRun().AddText("")
+	} else {
+		for _, t := range c.text {
+			p := c.cell.AddParagraph()
+			if c.alignment != wml.ST_JcUnset {
+				p.Properties().SetAlignment(c.alignment)
+			}
+			tab := ""
+			if c.bullet != nil && len(c.text) > 1 {
+				p.SetNumberingLevel(0)
+				p.SetNumberingDefinition(*c.bullet)
+				tab = "\t"
+			}
+			lines := strings.Split(t, "\\n")
+			for i, line := range lines {
+				line := strings.ReplaceAll(line, "\\t", "\t")
+				run := p.AddRun()
+				run.Properties().SetBold(c.bold)
+				run.Properties().SetFontFamily(xconditions.IfThenElse(c.fontFamily != "", c.fontFamily, c.cfg.FontFamily).(string))
+				run.Properties().SetSize(measurement.Distance(xconditions.IfThenElse(c.fontSize > 0, c.fontSize, c.cfg.FontSize).(int)))
+				if i == 0 {
+					run.AddText(tab + line)
+				} else {
+					// multi-line text
+					run.AddBreak()
+					run.AddText(line)
+				}
+			}
+		}
+	}
+
 }
