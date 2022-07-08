@@ -27,54 +27,26 @@ import (
 // https://github.com/shomali11/util		A group of generic useful utility functions
 
 type builder struct {
-	cfg   *Config
 	cfile string // config file name
 	ifile string // input file name
 	ofile string // output file name
 	dfile string // .docx file name
 }
 
+var cfg *Config
+
 func Build(cfile, ifile, ofile string, tfile string) error {
-	b := &builder{cfile: cfile, ifile: ifile, ofile: ofile, dfile: tfile}
+	ncfg, err := NewConfig(cfile)
+	if err != nil {
+		return eris.Wrapf(err, "failed to load the configuration file %s", cfile)
+	}
+	cfg = ncfg
+
+	b := &builder{ifile: ifile, ofile: ofile, dfile: tfile}
 	return b.buildSpec()
 }
 
-func (b *builder) loadData(file string) (*ProgSpec, error) {
-	yamlFile, err := ioutil.ReadFile(file)
-	if err != nil {
-		return nil, eris.Wrap(err, "failed to read the file")
-	}
-	var d ProgSpec
-	if err := yaml.Unmarshal(yamlFile, &d); err != nil {
-		return nil, eris.Wrapf(err, "failed to unmarshal the file %s", file)
-	}
-	return &d, nil
-}
-
-func (b *builder) resolveInFile(ifile string) (*[]string, error) {
-	files := []string{}
-	ifiles := strings.Split(ifile, ",")
-	for _, ifile := range ifiles {
-		fs, err := filepath.Glob(ifile)
-		if err != nil {
-			return nil, eris.Wrap(err, "failed to glob the file")
-		}
-		if len(fs) == 0 {
-			return nil, eris.Errorf("no such file: %s", ifile)
-		}
-		files = append(files, fs...)
-	}
-	sort.Strings(files)
-	return &files, nil
-}
-
 func (b *builder) buildSpec() error {
-	cfg, err := NewConfig(b.cfile)
-	if err != nil {
-		return eris.Wrapf(err, "failed to load the configuration file %s", b.cfile)
-	}
-	b.cfg = cfg
-
 	var doc *document.Document
 	if xstrings.IsBlank(b.dfile) {
 		doc = document.New()
@@ -89,14 +61,16 @@ func (b *builder) buildSpec() error {
 			},
 		}
 	} else {
-		if doc, err = document.Open(b.dfile); err != nil {
+		ndoc, err := document.Open(b.dfile)
+		if err != nil {
 			return eris.Wrapf(err, "failed to open the document %s", b.dfile)
 		}
+		doc = ndoc
 	}
 	fixBulletIndentation(doc)
 
 	// support multiple files
-	files, err := b.resolveInFile(b.ifile)
+	files, err := b.resolveIFile(b.ifile)
 	if err != nil {
 		return eris.Wrap(err, "failed to resolve the source file")
 	}
@@ -159,7 +133,7 @@ func (b *builder) buildFeature(doc *document.Document, feature *Feature) error {
 	gray := color.FromHex("ced4da")
 	lightgray := color.FromHex("e9ecef")
 	nd := doc.Numbering.Definitions()[0]
-	rb := rowBuilder{cfg: b.cfg}
+	rb := rowBuilder{}
 
 	tbMain := createTable(false)
 	rb.Reset(tbMain.AddRow()).AddCell(
@@ -269,6 +243,35 @@ func (b *builder) buildFeature(doc *document.Document, feature *Feature) error {
 	return nil
 }
 
+func (b *builder) loadData(file string) (*ProgSpec, error) {
+	yamlFile, err := ioutil.ReadFile(file)
+	if err != nil {
+		return nil, eris.Wrap(err, "failed to read the file")
+	}
+	var d ProgSpec
+	if err := yaml.Unmarshal(yamlFile, &d); err != nil {
+		return nil, eris.Wrapf(err, "failed to unmarshal the file %s", file)
+	}
+	return &d, nil
+}
+
+func (b *builder) resolveIFile(ifile string) (*[]string, error) {
+	files := []string{}
+	ifiles := strings.Split(ifile, ",")
+	for _, ifile := range ifiles {
+		fs, err := filepath.Glob(ifile)
+		if err != nil {
+			return nil, eris.Wrap(err, "failed to glob the file")
+		}
+		if len(fs) == 0 {
+			return nil, eris.Errorf("no such file: %s", ifile)
+		}
+		files = append(files, fs...)
+	}
+	sort.Strings(files)
+	return &files, nil
+}
+
 /* -------------------------------- UTILITIES ------------------------------- */
 func toStrArray(v interface{}) []string {
 	text := []string{}
@@ -306,7 +309,7 @@ func fixBulletIndentation(doc *document.Document) {
 type paraBuilder struct {
 	para      *document.Paragraph
 	style     string
-	text      string
+	text      []string
 	pageBreak bool
 	lineBreak bool
 }
@@ -318,8 +321,8 @@ func (p *paraBuilder) SetStyle(s string) *paraBuilder {
 	p.style = s
 	return p
 }
-func (p *paraBuilder) SetText(s string) *paraBuilder {
-	p.text = s
+func (p *paraBuilder) SetText(s interface{}) *paraBuilder {
+	p.text = toStrArray(s)
 	return p
 }
 func (p *paraBuilder) SetLineBreak() *paraBuilder {
@@ -334,12 +337,12 @@ func (p *paraBuilder) Build() {
 	if xstrings.IsNotBlank(p.style) {
 		p.para.SetStyle(p.style)
 	}
-	run := p.para.AddRun()
-	if xstrings.IsNotBlank(p.text) {
-		run.AddText(p.text)
-	}
-	if p.lineBreak {
-		run.AddBreak()
+	for i, s := range p.text {
+		run := p.para.AddRun()
+		run.AddText(s)
+		if i == len(p.text)-1 && p.lineBreak {
+			run.AddBreak()
+		}
 	}
 	if p.pageBreak {
 		p.para.Properties().AddSection(wml.ST_SectionMarkNextPage)
@@ -358,7 +361,6 @@ func (p *paraBuilder) Build() {
 /* -------------------------------------------------------------------------- */
 
 type rowBuilder struct {
-	cfg         *Config
 	row         document.Row
 	cellBuilder []*CellBuilder
 }
@@ -368,16 +370,14 @@ func (r *rowBuilder) Reset(row document.Row) *rowBuilder {
 	r.cellBuilder = []*CellBuilder{}
 	return r
 }
-
 func (r *rowBuilder) AddCell(attrs ...*CellBuilder) *rowBuilder {
 	r.cellBuilder = append(r.cellBuilder, attrs...)
 	return r
 }
-
 func (r *rowBuilder) Build() {
 	for _, attr := range r.cellBuilder {
 		nc := r.row.AddCell()
-		attr.SetConfig(r.cfg).SetCell(&nc).Build()
+		attr.SetCell(&nc).Build()
 	}
 }
 
@@ -386,7 +386,6 @@ func (r *rowBuilder) Build() {
 /* -------------------------------------------------------------------------- */
 
 type CellBuilder struct {
-	cfg                    *Config
 	cell                   *document.Cell
 	fontFamily             string
 	fontSize               int
@@ -407,10 +406,6 @@ type CellBuilder struct {
 
 func NewCellBuilder() *CellBuilder {
 	return &CellBuilder{}
-}
-func (c *CellBuilder) SetConfig(cfg *Config) *CellBuilder {
-	c.cfg = cfg
-	return c
 }
 func (c *CellBuilder) SetCell(dc *document.Cell) *CellBuilder {
 	c.cell = dc
@@ -547,8 +542,8 @@ func (c *CellBuilder) Build() {
 				line := strings.ReplaceAll(line, "\\t", "\t")
 				run := p.AddRun()
 				run.Properties().SetBold(c.bold)
-				run.Properties().SetFontFamily(xconditions.IfThenElse(c.fontFamily != "", c.fontFamily, c.cfg.FontFamily).(string))
-				run.Properties().SetSize(measurement.Distance(xconditions.IfThenElse(c.fontSize > 0, c.fontSize, c.cfg.FontSize).(int)))
+				run.Properties().SetFontFamily(xconditions.IfThenElse(c.fontFamily != "", c.fontFamily, cfg.FontFamily).(string))
+				run.Properties().SetSize(measurement.Distance(xconditions.IfThenElse(c.fontSize > 0, c.fontSize, cfg.FontSize).(int)))
 				if i == 0 {
 					run.AddText(tab + line)
 				} else {
