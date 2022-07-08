@@ -3,6 +3,7 @@ package converter
 import (
 	"fmt"
 	"io/ioutil"
+	"path"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -10,9 +11,9 @@ import (
 
 	"baliance.com/gooxml"
 	"baliance.com/gooxml/color"
+	"baliance.com/gooxml/common"
 	"baliance.com/gooxml/document"
 	"baliance.com/gooxml/measurement"
-	"baliance.com/gooxml/schema/soo/ofc/sharedTypes"
 	"baliance.com/gooxml/schema/soo/wml"
 	"github.com/rotisserie/eris"
 	"github.com/shomali11/util/xconditions"
@@ -34,6 +35,7 @@ type builder struct {
 }
 
 var cfg *Config
+var ifilePath string
 
 func Build(cfile, ifile, ofile string, tfile string) error {
 	ncfg, err := NewConfig(cfile)
@@ -42,6 +44,7 @@ func Build(cfile, ifile, ofile string, tfile string) error {
 	}
 	cfg = ncfg
 
+	ifilePath = path.Dir(ifile)
 	b := &builder{ifile: ifile, ofile: ofile, dfile: tfile}
 	return b.buildSpec()
 }
@@ -51,15 +54,15 @@ func (b *builder) buildSpec() error {
 	if xstrings.IsBlank(b.dfile) {
 		doc = document.New()
 		// set to A4 size (https://stackoverflow.com/questions/57581695/detecting-and-setting-paper-size-in-word-js-api-or-ooxml)
-		doc.X().Body.SectPr = wml.NewCT_SectPr()
-		doc.X().Body.SectPr.PgSz = &wml.CT_PageSz{
-			WAttr: &sharedTypes.ST_TwipsMeasure{
-				ST_UnsignedDecimalNumber: gooxml.Uint64(uint64(11906)),
-			},
-			HAttr: &sharedTypes.ST_TwipsMeasure{
-				ST_UnsignedDecimalNumber: gooxml.Uint64(uint64(16838)),
-			},
-		}
+		// doc.X().Body.SectPr = wml.NewCT_SectPr()
+		// doc.X().Body.SectPr.PgSz = &wml.CT_PageSz{
+		// 	WAttr: &sharedTypes.ST_TwipsMeasure{
+		// 		ST_UnsignedDecimalNumber: gooxml.Uint64(uint64(11906)),
+		// 	},
+		// 	HAttr: &sharedTypes.ST_TwipsMeasure{
+		// 		ST_UnsignedDecimalNumber: gooxml.Uint64(uint64(16838)),
+		// 	},
+		// }
 	} else {
 		ndoc, err := document.Open(b.dfile)
 		if err != nil {
@@ -81,17 +84,17 @@ func (b *builder) buildSpec() error {
 		}
 
 		// header
-		newParaBuilder(doc.AddParagraph()).SetStyle("Heading1").SetText("PROGRAM DESCRIPTION").Build()
+		NewParaBuilder(doc).SetStyle("Heading1").SetText("PROGRAM DESCRIPTION").Build()
 
 		for _, module := range data.Modules {
-			newParaBuilder(doc.AddParagraph()).SetStyle("Heading2").SetText(module.Name).Build()
+			NewParaBuilder(doc).SetStyle("Heading2").SetText(module.Name).Build()
 			for _, feature := range module.Features {
 				doc.AddParagraph()
-				newParaBuilder(doc.AddParagraph()).SetStyle("Heading3").SetText(feature.Name).Build()
+				NewParaBuilder(doc).SetStyle("Heading3").SetText(feature.Name).Build()
 				b.buildFeature(doc, &feature)
 			}
 			// if i < len(data.Modules)-1 {
-			newParaBuilder(doc.AddParagraph()).SetPageBreak().Build()
+			NewParaBuilder(doc).SetPageBreak().Build()
 			// }
 		}
 
@@ -102,8 +105,8 @@ func (b *builder) buildSpec() error {
 }
 
 func (b *builder) buildFeature(doc *document.Document, feature *Feature) error {
-	var createTable = func(p bool) document.Table {
-		if p {
+	var createTable = func(addLineBreak bool) document.Table {
+		if addLineBreak {
 			doc.AddParagraph()
 		}
 		table := doc.AddTable()
@@ -133,97 +136,120 @@ func (b *builder) buildFeature(doc *document.Document, feature *Feature) error {
 	gray := color.FromHex("ced4da")
 	lightgray := color.FromHex("e9ecef")
 	nd := doc.Numbering.Definitions()[0]
-	rb := rowBuilder{}
+	rb := NewRowBuilder(doc)
 
+	/* --------------------------------- PROGRAM -------------------------------- */
 	tbMain := createTable(false)
 	rb.Reset(tbMain.AddRow()).AddCell(
-		NewCellBuilder().SetText("Program ID").SetWidth(w).SetBold(true).SetBorderTopBottom(),
-		NewCellBuilder().SetText(feature.Id).SetBorderTopBottom()).Build()
+		rb.NewCellBuilder().SetText("Program ID").SetWidth(w).SetBold(true).SetBorderTopBottom(),
+		rb.NewCellBuilder().SetText(feature.Id).SetBorderTopBottom()).Build()
 	rb.Reset(tbMain.AddRow()).AddCell(
-		NewCellBuilder().SetText("Mode").SetWidth(w).SetBold(true).SetBorderTopBottom(),
-		NewCellBuilder().SetText(feature.Mode).SetBorderTopBottom()).Build()
+		rb.NewCellBuilder().SetText("Mode").SetWidth(w).SetBold(true).SetBorderTopBottom(),
+		rb.NewCellBuilder().SetText(feature.Mode).SetBorderTopBottom()).Build()
 	rb.Reset(tbMain.AddRow()).AddCell(
-		NewCellBuilder().SetText("Program Name").SetWidth(w).SetBold(true).SetBorderTopBottom(),
-		NewCellBuilder().SetText(feature.Name).SetBorderTopBottom()).Build()
+		rb.NewCellBuilder().SetText("Program Name").SetWidth(w).SetBold(true).SetBorderTopBottom(),
+		rb.NewCellBuilder().SetText(feature.Name).SetBorderTopBottom()).Build()
 	rb.Reset(tbMain.AddRow()).AddCell(
-		NewCellBuilder().SetText("Description").SetWidth(w).SetBold(true).SetBorderTopBottom(),
-		NewCellBuilder().SetText(feature.Desc).SetBorderTopBottom()).Build()
+		rb.NewCellBuilder().SetText("Description").SetWidth(w).SetBold(true).SetBorderTopBottom(),
+		rb.NewCellBuilder().SetText(feature.Desc).SetBorderTopBottom()).Build()
 
 	if (feature.Env.Sources != nil && !reflect.ValueOf(feature.Env.Sources).IsZero()) ||
 		(feature.Env.Languages != nil && !reflect.ValueOf(feature.Env.Languages).IsZero()) {
 		rb.Reset(tbMain.AddRow()).AddCell(
-			NewCellBuilder().SetText("Program Environment:").SetBold(true).SetColspan(2).SetBackgroundColor(gray).SetBorderTopBottom()).Build()
+			rb.NewCellBuilder().SetText("Program Environment:").SetBold(true).SetColspan(2).SetBackgroundColor(gray).SetBorderTopBottom()).Build()
 		if feature.Env.Sources != nil && !reflect.ValueOf(feature.Env.Sources).IsZero() {
 			rb.Reset(tbMain.AddRow()).AddCell(
-				NewCellBuilder().SetText("Program Source").SetWidth(w).SetBold(true).SetBorderTopBottom(),
-				NewCellBuilder().SetText(feature.Env.Sources).SetBorderTopBottom()).Build()
+				rb.NewCellBuilder().SetText("Program Source").SetWidth(w).SetBold(true).SetBorderTopBottom(),
+				rb.NewCellBuilder().SetText(feature.Env.Sources).SetBorderTopBottom()).Build()
 		}
 		if feature.Env.Languages != nil && !reflect.ValueOf(feature.Env.Languages).IsZero() {
 			rb.Reset(tbMain.AddRow()).AddCell(
-				NewCellBuilder().SetText("Language").SetWidth(w).SetBold(true).SetBorderTopBottom(),
-				NewCellBuilder().SetText(feature.Env.Languages).SetBorderTopBottom()).Build()
+				rb.NewCellBuilder().SetText("Language").SetWidth(w).SetBold(true).SetBorderTopBottom(),
+				rb.NewCellBuilder().SetText(feature.Env.Languages).SetBorderTopBottom()).Build()
 		}
 	}
 
+	/* -------------------------------- RESOURCE -------------------------------- */
 	if len(feature.Resources) > 0 {
-		// Resources
 		tbRes := createTable(true)
 		rb.Reset(tbRes.AddRow()).AddCell(
-			NewCellBuilder().SetText("Resources:").SetBold(true).SetColspan(2).SetBackgroundColor(gray).SetBorderTopBottom()).Build()
+			rb.NewCellBuilder().SetText("Resources:").SetBold(true).SetColspan(2).SetBackgroundColor(gray).SetBorderTopBottom()).Build()
 		rb.Reset(tbRes.AddRow()).AddCell(
-			NewCellBuilder().SetText("Table/File").SetWidth(w).SetBold(true).SetBackgroundColor(lightgray).SetBorderTopBottom(),
-			NewCellBuilder().SetText("Usage").SetBold(true).SetBackgroundColor(lightgray).SetBorderTopBottom()).Build()
+			rb.NewCellBuilder().SetText("Table/File").SetWidth(w).SetBold(true).SetBackgroundColor(lightgray).SetBorderTopBottom(),
+			rb.NewCellBuilder().SetText("Usage").SetBold(true).SetBackgroundColor(lightgray).SetBorderTopBottom()).Build()
 		for _, res := range feature.Resources {
 			rb.Reset(tbRes.AddRow()).AddCell(
-				NewCellBuilder().SetText(res.Name).SetWidth(w).SetBorderTopBottom(),
-				NewCellBuilder().SetText(res.Usage).SetBorderTopBottom()).Build()
+				rb.NewCellBuilder().SetText(res.Name).SetWidth(w).SetBorderTopBottom(),
+				rb.NewCellBuilder().SetText(res.Usage).SetBorderTopBottom()).Build()
 		}
 
-		// Input
+		/* --------------------------------- SCREEN --------------------------------- */
+		if len(feature.Screens) > 0 {
+			tbScr := createTable(true)
+			rb.Reset(tbScr.AddRow()).AddCell(
+				rb.NewCellBuilder().SetText("Screen:").SetBold(true).SetColspan(2).SetBackgroundColor(gray).SetBorderTopBottom()).Build()
+			for i, scr := range feature.Screens {
+				if i > 0 && xstrings.IsNotBlank(scr.Image.File) {
+					tbScr = createTable(false)
+				}
+				rb.Reset(tbScr.AddRow()).AddCell(
+					rb.NewCellBuilder().SetText("Screen ID").SetWidth(w).SetBold(true).SetBackgroundColor(lightgray).SetBorderTopBottom(),
+					rb.NewCellBuilder().SetText("Name").SetBold(true).SetBackgroundColor(lightgray).SetBorderTopBottom()).Build()
+
+				rb.Reset(tbScr.AddRow()).AddCell(
+					rb.NewCellBuilder().SetText(scr.Id).SetWidth(w).SetBorderTopBottom(),
+					rb.NewCellBuilder().SetText(scr.Name).SetBorderTopBottom()).Build()
+				if xstrings.IsNotBlank(scr.Image.File) {
+					NewParaBuilder(doc).SetImage(scr.Image.File).SetImageWidth(scr.Image.Width).Build()
+				}
+			}
+		}
+
+		/* ---------------------------------- INPUT --------------------------------- */
 		if len(feature.Input) > 0 {
 			tbInp := createTable(true)
 			rb.Reset(tbInp.AddRow()).AddCell(
-				NewCellBuilder().SetText("Input:").SetBold(true).SetColspan(2).SetBackgroundColor(gray).SetBorderTopBottom()).Build()
+				rb.NewCellBuilder().SetText("Input:").SetBold(true).SetColspan(2).SetBackgroundColor(gray).SetBorderTopBottom()).Build()
 			for i, inp := range feature.Input {
 				rb.Reset(tbInp.AddRow()).AddCell(
-					NewCellBuilder().SetText(fmt.Sprintf("%d. %s", i+1, inp.Name)).SetBold(true).SetColspan(2).SetBackgroundColor(lightgray).SetBorderTopBottom(),
+					rb.NewCellBuilder().SetText(fmt.Sprintf("%d. %s", i+1, inp.Name)).SetBold(true).SetColspan(2).SetBackgroundColor(lightgray).SetBorderTopBottom(),
 				).Build()
 				if inp.Fields != nil && !reflect.ValueOf(inp.Fields).IsZero() {
 					rb.Reset(tbInp.AddRow()).AddCell(
-						NewCellBuilder().SetText("Fields").SetBold(true).SetWidth(w),
-						NewCellBuilder().SetText(inp.Fields),
+						rb.NewCellBuilder().SetText("Fields").SetBold(true).SetWidth(w),
+						rb.NewCellBuilder().SetText(inp.Fields),
 					).Build()
 				}
 				if inp.Constraints != nil && !reflect.ValueOf(inp.Constraints).IsZero() {
 					rb.Reset(tbInp.AddRow()).AddCell(
-						NewCellBuilder().SetText("Constraints").SetBold(true).SetWidth(w),
-						NewCellBuilder().SetText(inp.Constraints).SetBullet(&nd),
+						rb.NewCellBuilder().SetText("Constraints").SetBold(true).SetWidth(w),
+						rb.NewCellBuilder().SetText(inp.Constraints).SetBullet(&nd),
 					).Build()
 				}
 				if inp.Remarks != nil && !reflect.ValueOf(inp.Remarks).IsZero() {
 					rb.Reset(tbInp.AddRow()).AddCell(
-						NewCellBuilder().SetText("Remarks").SetBold(true).SetWidth(w),
-						NewCellBuilder().SetText(inp.Remarks).SetBullet(&nd),
+						rb.NewCellBuilder().SetText("Remarks").SetBold(true).SetWidth(w),
+						rb.NewCellBuilder().SetText(inp.Remarks).SetBullet(&nd),
 					).Build()
 				}
 			}
 		}
 
-		// Scenarios
+		/* -------------------------------- SCENARIO -------------------------------- */
 		if len(feature.Scenarios) > 0 {
 			tbScn := createTable(true)
 			rb.Reset(tbScn.AddRow()).AddCell(
-				NewCellBuilder().SetText("Scenarios:").SetBold(true).SetColspan(2).SetBackgroundColor(gray).SetBorderTopBottom()).Build()
+				rb.NewCellBuilder().SetText("Scenarios:").SetBold(true).SetColspan(2).SetBackgroundColor(gray).SetBorderTopBottom()).Build()
 			for i, scn := range feature.Scenarios {
 				rb.Reset(tbScn.AddRow()).AddCell(
-					NewCellBuilder().SetText(fmt.Sprintf("%d. %s", i+1, scn.Name)).SetBold(true).SetBackgroundColor(lightgray).SetColspan(2).SetBorderTopBottom(),
+					rb.NewCellBuilder().SetText(fmt.Sprintf("%d. %s", i+1, scn.Name)).SetBold(true).SetBackgroundColor(lightgray).SetColspan(2).SetBorderTopBottom(),
 				).Build()
 
 				for _, action := range scn.Desc {
 					keyword, others := splitScenarioWord(action)
 					rb.Reset(tbScn.AddRow()).AddCell(
-						NewCellBuilder().SetText(keyword).SetBold(true).SetAlignment(wml.ST_JcLeft).SetWidth(10),
-						NewCellBuilder().SetText(others),
+						rb.NewCellBuilder().SetText(keyword).SetBold(true).SetAlignment(wml.ST_JcLeft).SetWidth(10),
+						rb.NewCellBuilder().SetText(others),
 					).Build()
 				}
 			}
@@ -233,9 +259,9 @@ func (b *builder) buildFeature(doc *document.Document, feature *Feature) error {
 		if feature.Remarks != nil && !reflect.ValueOf(feature.Remarks).IsZero() {
 			tbRmk := createTable(true)
 			rb.Reset(tbRmk.AddRow()).AddCell(
-				NewCellBuilder().SetText("Remarks:").SetBold(true).SetBackgroundColor(gray).SetBorderTopBottom()).Build()
+				rb.NewCellBuilder().SetText("Remarks:").SetBold(true).SetBackgroundColor(gray).SetBorderTopBottom()).Build()
 			rb.Reset(tbRmk.AddRow()).AddCell(
-				NewCellBuilder().SetText(feature.Remarks).SetBullet(&nd),
+				rb.NewCellBuilder().SetText(feature.Remarks).SetBullet(&nd),
 			).Build()
 		}
 
@@ -306,34 +332,46 @@ func fixBulletIndentation(doc *document.Document) {
 /*                             PARAGRAPHS BUILDER                             */
 /* -------------------------------------------------------------------------- */
 
-type paraBuilder struct {
-	para      *document.Paragraph
-	style     string
-	text      []string
-	pageBreak bool
-	lineBreak bool
+type ParaBuilder struct {
+	doc        *document.Document
+	para       *document.Paragraph
+	style      string
+	text       []string
+	pageBreak  bool
+	lineBreak  bool
+	imagePath  string
+	imageWidth int
 }
 
-func newParaBuilder(p document.Paragraph) *paraBuilder {
-	return &paraBuilder{para: &p}
+func NewParaBuilder(d *document.Document) *ParaBuilder {
+	p := d.AddParagraph()
+	return &ParaBuilder{doc: d, para: &p}
 }
-func (p *paraBuilder) SetStyle(s string) *paraBuilder {
+func (p *ParaBuilder) SetStyle(s string) *ParaBuilder {
 	p.style = s
 	return p
 }
-func (p *paraBuilder) SetText(s interface{}) *paraBuilder {
+func (p *ParaBuilder) SetText(s interface{}) *ParaBuilder {
 	p.text = toStrArray(s)
 	return p
 }
-func (p *paraBuilder) SetLineBreak() *paraBuilder {
+func (p *ParaBuilder) SetLineBreak() *ParaBuilder {
 	p.lineBreak = true
 	return p
 }
-func (p *paraBuilder) SetPageBreak() *paraBuilder {
+func (p *ParaBuilder) SetPageBreak() *ParaBuilder {
 	p.pageBreak = true
 	return p
 }
-func (p *paraBuilder) Build() {
+func (p *ParaBuilder) SetImage(path string) *ParaBuilder {
+	p.imagePath = path
+	return p
+}
+func (p *ParaBuilder) SetImageWidth(width int) *ParaBuilder {
+	p.imageWidth = width
+	return p
+}
+func (p *ParaBuilder) Build() {
 	if xstrings.IsNotBlank(p.style) {
 		p.para.SetStyle(p.style)
 	}
@@ -343,6 +381,33 @@ func (p *paraBuilder) Build() {
 		if i == len(p.text)-1 && p.lineBreak {
 			run.AddBreak()
 		}
+	}
+	if xstrings.IsNotBlank(p.imagePath) {
+		// image should relative to input file
+		imgPath := path.Join(ifilePath, p.imagePath)
+		img, err := common.ImageFromFile(imgPath)
+		if err != nil {
+			logrus.Warn(err)
+			return
+		}
+		iref, err := p.doc.AddImage(img)
+		if err != nil {
+			logrus.Warn(err)
+			return
+		}
+		para := p.doc.AddParagraph()
+		para.Properties().SetAlignment(wml.ST_JcCenter)
+		inl, err := para.AddRun().AddDrawingInline(iref)
+		if err != nil {
+			logrus.Warn(err)
+			return
+		}
+		w := 400.0
+		if p.imageWidth > 0 {
+			w = float64(p.imageWidth)
+		}
+		h := w / float64(img.Size.X) * float64(img.Size.Y)
+		inl.SetSize(measurement.Distance(w*measurement.Point), measurement.Distance(h*measurement.Point))
 	}
 	if p.pageBreak {
 		p.para.Properties().AddSection(wml.ST_SectionMarkNextPage)
@@ -360,21 +425,28 @@ func (p *paraBuilder) Build() {
 /*                                 ROW BUILDER                                */
 /* -------------------------------------------------------------------------- */
 
-type rowBuilder struct {
+type RowBuilder struct {
+	doc         *document.Document
 	row         document.Row
 	cellBuilder []*CellBuilder
 }
 
-func (r *rowBuilder) Reset(row document.Row) *rowBuilder {
+func NewRowBuilder(d *document.Document) *RowBuilder {
+	return &RowBuilder{doc: d}
+}
+func (r *RowBuilder) Reset(row document.Row) *RowBuilder {
 	r.row = row
 	r.cellBuilder = []*CellBuilder{}
 	return r
 }
-func (r *rowBuilder) AddCell(attrs ...*CellBuilder) *rowBuilder {
+func (r *RowBuilder) NewCellBuilder() *CellBuilder {
+	return &CellBuilder{doc: r.doc}
+}
+func (r *RowBuilder) AddCell(attrs ...*CellBuilder) *RowBuilder {
 	r.cellBuilder = append(r.cellBuilder, attrs...)
 	return r
 }
-func (r *rowBuilder) Build() {
+func (r *RowBuilder) Build() {
 	for _, attr := range r.cellBuilder {
 		nc := r.row.AddCell()
 		attr.SetCell(&nc).Build()
@@ -386,6 +458,7 @@ func (r *rowBuilder) Build() {
 /* -------------------------------------------------------------------------- */
 
 type CellBuilder struct {
+	doc                    *document.Document
 	cell                   *document.Cell
 	fontFamily             string
 	fontSize               int
@@ -402,11 +475,9 @@ type CellBuilder struct {
 	borderInsideHorizontal bool
 	borderInsideVertical   bool
 	alignment              wml.ST_Jc
+	imagePath              string
 }
 
-func NewCellBuilder() *CellBuilder {
-	return &CellBuilder{}
-}
 func (c *CellBuilder) SetCell(dc *document.Cell) *CellBuilder {
 	c.cell = dc
 	return c
@@ -554,5 +625,4 @@ func (c *CellBuilder) Build() {
 			}
 		}
 	}
-
 }

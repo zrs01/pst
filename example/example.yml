@@ -16,6 +16,10 @@ modules:
           - { name: TB_USER_MASTER, usage: "Insert, Read" }
           - { name: TB_USER_ROLE_MAPPING, usage: Insert }
           - { name: TB_USER_ACTION_LOG, usage: Insert }
+        screens:
+          - id: PG-GEN-002
+            name: Login
+            image: { file: example.png, width: 200 }  # width default: 400
         input:
           - name: Email Address
             fields: TB_USER_MASTER_USER_EMAIL
@@ -79,8 +83,6 @@ modules:
         remarks:
           - Password length is 10 and formed with uppercase characters, lowercase characters and digits.
           - Password and HKID to be encrypted in AES-256 algorithm with a 32 characters key.
-
-
 
       - id: UF011A
         name: Enable User Login through iAM Smart
