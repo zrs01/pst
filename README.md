@@ -58,7 +58,7 @@ $ pst -i sample.yml -o sample.docx -m spec.docx
 # -- Support multiple files
 $ pst -i sample1.yml,sample2.yml,sample3.yml -o sample.docx
 
-# -- Support wildcard input files
+# -- Support wildcard input files (sorted by ascending)
 $ pst -i samp*.yml -o sample.docx
 ```
 

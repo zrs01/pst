@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	baliance.com/gooxml v1.0.1
+	github.com/imdario/mergo v0.3.13
 	github.com/jinzhu/configor v1.2.1
 	github.com/rotisserie/eris v0.5.4
 	github.com/shomali11/util v0.0.0-20200329021417-91c54758c87b

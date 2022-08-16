@@ -60,6 +60,7 @@ func main() {
 	}
 	cliapp.Action = func(ctx *cli.Context) error {
 		return converter.Build(cfile, ifile, ofile, dfile)
+		// return docb.Build(cfile, ifile, ofile, dfile)
 	}
 
 	if err := cliapp.Run(os.Args); err != nil {
