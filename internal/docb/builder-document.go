@@ -72,10 +72,12 @@ func NewDocumentBuilder(file string, cfg ...Configuration) (*DocumentBuilder, er
 	return &DocumentBuilder{Document: doc, config: c}, nil
 }
 
-func (d *DocumentBuilder) AddParagraph(nextBuilder func(*ParagraphBuilder)) *DocumentBuilder {
+func (d *DocumentBuilder) AddParagraph(nextBuilders ...func(*ParagraphBuilder)) *DocumentBuilder {
 	p := newParagraphBuilder(d.config, d.Document)
 	d.builder = append(d.builder, p)
-	nextBuilder(p)
+	for _, nextBuilder := range nextBuilders {
+		nextBuilder(p)
+	}
 	return d
 }
 

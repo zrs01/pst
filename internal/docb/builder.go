@@ -42,7 +42,7 @@ func (b *Builder) construct() error {
 		return eris.Wrap(err, "failed to resolve the source file")
 	}
 	for _, file := range *files {
-		_, err := b.loadData(file)
+		data, err := b.loadData(file)
 		if err != nil {
 			return eris.Wrap(err, "failed to load the file")
 		}
@@ -50,7 +50,25 @@ func (b *Builder) construct() error {
 		// header
 		docb.AddParagraph(func(p *ParagraphBuilder) {
 			p.SetStyle("Heading1").SetText("PROGRAM DESCRIPTON")
-		}).Build()
+		})
+
+		for _, module := range data.Modules {
+			docb.AddParagraph(func(p *ParagraphBuilder) {
+				p.SetStyle("Heading2").SetText(module.Name)
+			})
+			for _, feature := range module.Features {
+				docb.AddParagraph().
+					AddParagraph(func(p *ParagraphBuilder) {
+						p.SetStyle("Heading3").SetText(feature.Name)
+					})
+				// b.buildFeature(doc, &feature)
+			}
+			docb.AddParagraph(func(p *ParagraphBuilder) {
+				p.SetPageBreak()
+			})
+		}
+
+		docb.Build()
 
 	}
 	docb.Document.SaveToFile(b.ofile)
