@@ -6,7 +6,6 @@ import (
 
 	"baliance.com/gooxml"
 	"baliance.com/gooxml/document"
-	"github.com/imdario/mergo"
 	"github.com/rotisserie/eris"
 	"github.com/shomali11/util/xstrings"
 )
@@ -41,9 +40,13 @@ func NewDocumentBuilder(file string, cfg ...Configuration) (*DocumentBuilder, er
 		FontSize:   10,
 	}
 	if len(cfg) > 0 {
-		if err := mergo.Merge(&c, cfg[0]); err != nil {
-			return nil, eris.Wrap(err, "failed to merge option")
+		if xstrings.IsNotBlank(cfg[0].FontFamily) {
+			c.FontFamily = cfg[0].FontFamily
 		}
+		if cfg[0].FontSize > 0 {
+			c.FontSize = cfg[0].FontSize
+		}
+		c.ImagePath = cfg[0].ImagePath
 	}
 
 	// create document object at once for outsider customization
@@ -73,7 +76,7 @@ func NewDocumentBuilder(file string, cfg ...Configuration) (*DocumentBuilder, er
 }
 
 func (d *DocumentBuilder) AddParagraph(nextBuilders ...func(*ParagraphBuilder)) *DocumentBuilder {
-	p := newParagraphBuilder(d.config, d.Document)
+	p := newParagraphBuilder(d.config, d.Document, d.Document.AddParagraph())
 	d.builder = append(d.builder, p)
 	for _, nextBuilder := range nextBuilders {
 		nextBuilder(p)
@@ -82,7 +85,7 @@ func (d *DocumentBuilder) AddParagraph(nextBuilders ...func(*ParagraphBuilder)) 
 }
 
 func (d *DocumentBuilder) AddTable(nextBuilder func(*TableBuilder)) *DocumentBuilder {
-	t := newTableBuilder(d.config, d.Document)
+	t := newTableBuilder(d.config, d.Document, d.Document.AddTable())
 	d.builder = append(d.builder, t)
 	nextBuilder(t)
 	return d

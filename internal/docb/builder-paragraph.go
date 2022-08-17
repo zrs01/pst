@@ -14,6 +14,7 @@ import (
 type ParagraphBuilder struct {
 	config    *Configuration
 	document  *document.Document
+	paragraph *document.Paragraph
 	style     string
 	text      []string
 	alignment wml.ST_Jc
@@ -24,8 +25,8 @@ type ParagraphBuilder struct {
 	// 	imageWidth    int
 }
 
-func newParagraphBuilder(cfg *Configuration, d *document.Document) *ParagraphBuilder {
-	return &ParagraphBuilder{document: d, config: cfg}
+func newParagraphBuilder(cfg *Configuration, d *document.Document, p document.Paragraph) *ParagraphBuilder {
+	return &ParagraphBuilder{config: cfg, document: d, paragraph: &p}
 }
 
 func (p *ParagraphBuilder) SetStyle(s string) *ParagraphBuilder {
@@ -61,7 +62,7 @@ func (p *ParagraphBuilder) AddImage(set func(*ImageProperty)) *ParagraphBuilder 
 }
 
 func (p *ParagraphBuilder) Build() {
-	paragraph := p.document.AddParagraph()
+	paragraph := p.paragraph
 
 	if xstrings.IsNotBlank(p.style) {
 		paragraph.SetStyle(p.style)
@@ -92,11 +93,12 @@ func (p *ParagraphBuilder) Build() {
 			logrus.Warn(err)
 			return
 		}
-		para := p.document.AddParagraph()
-		if img.Alignment != wml.ST_JcUnset {
-			para.Properties().SetAlignment(img.Alignment)
-		}
-		inl, err := para.AddRun().AddDrawingInline(iref)
+		// para := p.document.AddParagraph()
+		// if img.Alignment != wml.ST_JcUnset {
+		// 	para.Properties().SetAlignment(img.Alignment)
+		// }
+		// inl, err := para.AddRun().AddDrawingInline(iref)
+		inl, err := paragraph.AddRun().AddDrawingInline(iref)
 		if err != nil {
 			logrus.Warn(err)
 			return

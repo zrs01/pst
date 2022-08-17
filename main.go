@@ -6,7 +6,7 @@ import (
 	"github.com/rotisserie/eris"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
-	"github.com/zrs01/pst/internal/converter"
+	"github.com/zrs01/pst/internal/docb"
 )
 
 var version = "development"
@@ -59,8 +59,8 @@ func main() {
 		},
 	}
 	cliapp.Action = func(ctx *cli.Context) error {
-		return converter.Build(cfile, ifile, ofile, dfile)
-		// return docb.Build(cfile, ifile, ofile, dfile)
+		// return converter.Build(cfile, ifile, ofile, dfile)
+		return docb.Build(cfile, ifile, ofile, dfile)
 	}
 
 	if err := cliapp.Run(os.Args); err != nil {

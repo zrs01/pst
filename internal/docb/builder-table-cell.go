@@ -8,7 +8,6 @@ import (
 	"baliance.com/gooxml/measurement"
 	"baliance.com/gooxml/schema/soo/wml"
 	"github.com/shomali11/util/xconditions"
-	"github.com/sirupsen/logrus"
 )
 
 type CellBuilder struct {
@@ -28,19 +27,16 @@ type CellBuilder struct {
 	alignment       wml.ST_Jc
 }
 
-func newCellBuilder(cfg *Configuration, doc *document.Document) *CellBuilder {
-	return &CellBuilder{document: doc, config: cfg}
+func newCellBuilder(cfg *Configuration, doc *document.Document, c document.Cell) *CellBuilder {
+	return &CellBuilder{config: cfg, document: doc, cell: &c}
 }
 
-func (c *CellBuilder) AddParagraph(nextBuilder func(*ParagraphBuilder)) *CellBuilder {
-	p := newParagraphBuilder(c.config, c.document)
+func (c *CellBuilder) AddParagraph(nextBuilder ...func(*ParagraphBuilder)) *CellBuilder {
+	p := newParagraphBuilder(c.config, c.document, c.cell.AddParagraph())
 	c.builder = append(c.builder, p)
-	nextBuilder(p)
-	return c
-}
-
-func (c *CellBuilder) SetCell(dc *document.Cell) *CellBuilder {
-	c.cell = dc
+	if len(nextBuilder) > 0 {
+		nextBuilder[0](p)
+	}
 	return c
 }
 
@@ -54,8 +50,8 @@ func (c *CellBuilder) SetFontSize(fs int) *CellBuilder {
 	return c
 }
 
-func (c *CellBuilder) SetBold(b bool) *CellBuilder {
-	c.bold = b
+func (c *CellBuilder) SetBold() *CellBuilder {
+	c.bold = true
 	return c
 }
 
@@ -96,11 +92,6 @@ func (c *CellBuilder) SetAlignment(align wml.ST_Jc) *CellBuilder {
 }
 
 func (c *CellBuilder) Build() {
-	if c.cell == nil {
-		logrus.Warn("failed to build the cell, missing cell instance")
-		return
-	}
-
 	if c.borders != nil {
 		b := c.cell.Properties().Borders()
 		if c.borders.Top != nil {
@@ -113,7 +104,13 @@ func (c *CellBuilder) Build() {
 			b.SetBottom(c.borders.Bottom.Style, c.borders.Bottom.Color, c.borders.Bottom.Thickness)
 		}
 		if c.borders.Left != nil {
-			b.SetLeft(c.borders.Left.Style, c.borders.Left.Color, c.borders.Bottom.Thickness)
+			b.SetLeft(c.borders.Left.Style, c.borders.Left.Color, c.borders.Left.Thickness)
+		}
+		if c.borders.InsideHorizontal != nil {
+			b.SetInsideHorizontal(c.borders.InsideHorizontal.Style, c.borders.InsideHorizontal.Color, c.borders.InsideHorizontal.Thickness)
+		}
+		if c.borders.InsideVertical != nil {
+			b.SetInsideVertical(c.borders.InsideVertical.Style, c.borders.InsideVertical.Color, c.borders.InsideVertical.Thickness)
 		}
 	}
 

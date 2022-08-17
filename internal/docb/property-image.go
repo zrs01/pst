@@ -13,18 +13,22 @@ func newImageProperty() *ImageProperty {
 	return &ImageProperty{Width: 400.0}
 }
 
-func (p *ImageProperty) SetFile(path string) {
+func (p *ImageProperty) SetFile(path string) *ImageProperty {
 	p.FilePath = path
+	return p
 }
 
-func (p *ImageProperty) SetWidth(value float64) {
+func (p *ImageProperty) SetWidth(value float64) *ImageProperty {
 	p.Width = value
+	return p
 }
 
-func (p *ImageProperty) SetHeight(value float64) {
+func (p *ImageProperty) SetHeight(value float64) *ImageProperty {
 	p.Height = value
+	return p
 }
 
-func (p *ImageProperty) SetAlignment(align wml.ST_Jc) {
+func (p *ImageProperty) SetAlignment(align wml.ST_Jc) *ImageProperty {
 	p.Alignment = align
+	return p
 }

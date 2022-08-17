@@ -19,7 +19,9 @@ type Feature struct {
 	Input     []Input     `yaml:"input,omitempty"`
 	Scenarios []Scenario  `yaml:"scenarios,omitempty"`
 	Remarks   interface{} `yaml:"remarks,omitempty"`
+	Others    Others      `yaml:"others,omitempty"`
 }
+
 type Env struct {
 	Sources   interface{} `yaml:"sources,omitempty"`
 	Languages interface{} `yaml:"langs,omitempty"`
@@ -46,4 +48,9 @@ type Scenario struct {
 type Image struct {
 	File  string `yaml:"file,omitempty"`
 	Width int    `yaml:"width,omitempty"`
+}
+type Others struct {
+	Reference interface{} `yaml:"reference,omitempty"`
+	Limits    interface{} `yaml:"limits,omitempty"`
+	Remarks   interface{} `yaml:"remarks,omitempty"`
 }
