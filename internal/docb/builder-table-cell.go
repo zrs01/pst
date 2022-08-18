@@ -18,7 +18,7 @@ type CellBuilder struct {
 	fontFamily      string
 	fontSize        int
 	bold            bool
-	width           int
+	widthPercent    float64
 	colspan         int
 	bullet          *document.NumberingDefinition
 	text            []string
@@ -55,8 +55,8 @@ func (c *CellBuilder) SetBold() *CellBuilder {
 	return c
 }
 
-func (c *CellBuilder) SetWidth(w int) *CellBuilder {
-	c.width = w
+func (c *CellBuilder) SetWidthPercent(w float64) *CellBuilder {
+	c.widthPercent = w
 	return c
 }
 
@@ -114,8 +114,8 @@ func (c *CellBuilder) Build() {
 		}
 	}
 
-	if c.width > 0 {
-		c.cell.Properties().SetWidthPercent(float64(c.width))
+	if c.widthPercent > 0 {
+		c.cell.Properties().SetWidthPercent(c.widthPercent)
 	}
 
 	if c.colspan > 0 {

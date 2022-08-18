@@ -19,35 +19,45 @@ modules:
         screens:
           - id: PG-GEN-002
             name: Login
-            image: { file: example.png, width: 200 }  # width default: 400
-        input:
-          - name: Email Address
-            fields: TB_USER_MASTER_USER_EMAIL
-            cons:
-              - Max length is 20
-              - Must in lowercase
-              - Conform email format
-            remarks: Could be null if Chinese Name is not null
-          - name: Title
-            fields: TB_USER_MASTER_USER_TITLE
-          - name: English Name
-            fields: TB_USER_MASTER_USER_NAME
-          - name: Chinese Name
-            fields: TB_USER_MASTER.USER_NAME_TC
-          - name: Mailing Address
-            fields: [TB_USER_MASTER.USER_ADDR1, TB_USER_MASTER.USER_ADDR2]
-          - name: Full HKID Card Number / Passport No.
-            fields: TB_USER_MASTER.HKID_NO / TB_USER_MASTER.PASSPORT_NO
-            remarks: Encrypted with AES-256
-          - name: Telephone Number
-            fields: TB_USER_MASTER.USER_PHONE
-          - name: Fax
-            fields: TB_USER_MASTER.USER_FAX
-          - name: Captcha (Verification Code)
-            fields: Nil
-          - name: Terms and Conditions Check Box
-            fields: Nil
-            remarks: Client Side Checking Only
+            image: { file: example.png, width: 200 } # width default: 400
+        # input:
+        #   - name: Email Address
+        #     fields: TB_USER_MASTER_USER_EMAIL
+        #     cons:
+        #       - Max length is 20
+        #       - Must in lowercase
+        #       - Conform email format
+        #     remarks: Could be null if Chinese Name is not null
+        #   - name: Title
+        #     fields: TB_USER_MASTER_USER_TITLE
+        #   - name: English Name
+        #     fields: TB_USER_MASTER_USER_NAME
+        #   - name: Chinese Name
+        #     fields: TB_USER_MASTER.USER_NAME_TC
+        #   - name: Mailing Address
+        #     fields: [TB_USER_MASTER.USER_ADDR1, TB_USER_MASTER.USER_ADDR2]
+        #   - name: Full HKID Card Number / Passport No.
+        #     fields: TB_USER_MASTER.HKID_NO / TB_USER_MASTER.PASSPORT_NO
+        #     remarks: Encrypted with AES-256
+        #   - name: Telephone Number
+        #     fields: TB_USER_MASTER.USER_PHONE
+        #   - name: Fax
+        #     fields: TB_USER_MASTER.USER_FAX
+        #   - name: Captcha (Verification Code)
+        #     fields: Nil
+        #   - name: Terms and Conditions Check Box
+        #     fields: Nil
+        #     remarks: Client Side Checking Only
+        parameters:
+          - { field: Email Address, data: TB_USER_MASTER.USER_EMAIL, io: I }
+          - { field: Title, data: TB_USER_MASTER.USER_TITLE, io: I }
+          - { field: English Name, data: TB_USER_MASTER.USER_NAME, io: I }
+          - { field: Chinese Name, data: TB_USER_MASTER.USER_NAME_TC, io: I }
+          - { field: Mailing Address, data: TB_USER_MASTER.USER_ADDR1, TB_USER_MASTER.USER_ADDR2, io: I }
+          - { field: Full HKID Card Number / Passport No., data: TB_USER_MASTER.HKID_NO / TB_USER_MASTER.PASSPORT_NO, io: I, remarks: Encrypted with AES-256}
+          - { field: Telephone Number, data: TB_USER_MASTER.USER_PHONE, io: I }
+          - { field: Fax, data: TB_USER_MASTER.USER_FAX, io: I }
+          - { field: Captcha (Verification Code), data: Nil, io: I }
         scenarios:
           # given, when, then, and, but (reference: https://cucumber.io/docs/gherkin/reference/)
           - name: Login with iAM Smart Button Clicked
@@ -80,9 +90,12 @@ modules:
                 2.\tInsert into TB_USER_ROLE_MAPPING\n
                 3.\tInsert into AU_USER_ACTION_LOG
               - and Send email to the user to the email address that was input
-        remarks:
-          - Password length is 10 and formed with uppercase characters, lowercase characters and digits.
-          - Password and HKID to be encrypted in AES-256 algorithm with a 32 characters key.
+        others:
+          reference: Nil
+          limits: Nil
+          remarks:
+            - Password length is 10 and formed with uppercase characters, lowercase characters and digits.
+            - Password and HKID to be encrypted in AES-256 algorithm with a 32 characters key.
 
       - id: UF011A
         name: Enable User Login through iAM Smart

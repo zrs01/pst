@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"baliance.com/gooxml/color"
+	"baliance.com/gooxml/document"
 	"baliance.com/gooxml/measurement"
 	"baliance.com/gooxml/schema/soo/wml"
 	"github.com/rotisserie/eris"
@@ -72,7 +73,7 @@ func (b *Builder) construct() error {
 					AddParagraph(func(p *ParagraphBuilder) {
 						p.SetStyle("Heading3").SetText(feature.Name)
 					})
-				if err := b.buildFeature(docb, &feature); err != nil {
+				if err := b.constructFeature(docb, &feature); err != nil {
 					return eris.Wrap(err, "failed to build details")
 				}
 			}
@@ -87,88 +88,125 @@ func (b *Builder) construct() error {
 	return nil
 }
 
-func (b *Builder) buildFeature(docb *DocumentBuilder, feature *Feature) error {
+func (b *Builder) constructFeature(docb *DocumentBuilder, feature *Feature) error {
 	c1 := color.FromHex("ced4da") // gray
 	c2 := color.FromHex("e9ecef") // light gray
-	wd := 20
+	wd := float64(20)
 	nd := docb.Document.Numbering.Definitions()[0]
 	bs := wml.ST_BorderSingle
 	bc := color.Auto
 	bt := measurement.Distance(0.5 * measurement.Point)
 
-	/* --------------------------------- PROGRAM -------------------------------- */
-	docb.AddTable(func(tb *TableBuilder) {
-		tb.SetWidthPercent(100).SetBorders(func(b *Borders) { b.SetBorderAll(bs, bc, bt) }).
-			AddRow(func(rb *RowBuilder) {
-				rb.
-					AddCell(func(cb *CellBuilder) { cb.SetText("Program ID").SetBold().SetWidth(wd).SetBackgroundColor(c1) }).
-					AddCell(func(cb *CellBuilder) { cb.SetText(feature.Id).SetBackgroundColor(c1) })
-			}).
-			AddRow(func(rb *RowBuilder) {
-				rb.
-					AddCell(func(cb *CellBuilder) { cb.SetText("Mode").SetBold().SetWidth(wd) }).
-					AddCell(func(cb *CellBuilder) { cb.SetText(feature.Mode) })
-			}).
-			AddRow(func(rb *RowBuilder) {
-				rb.
-					AddCell(func(cb *CellBuilder) { cb.SetText("Program Name").SetBold().SetWidth(wd) }).
-					AddCell(func(cb *CellBuilder) { cb.SetText(feature.Name) })
-			}).
-			AddRow(func(rb *RowBuilder) {
-				rb.
-					AddCell(func(cb *CellBuilder) { cb.SetText("Description").SetBold().SetWidth(wd) }).
-					AddCell(func(cb *CellBuilder) { cb.SetText(feature.Desc) })
+	// generic table
+	type xcol struct {
+		value        interface{}
+		bold         bool
+		colspan      int
+		widthPercent float64
+		numbering    document.NumberingDefinition
+		alignment    wml.ST_Jc
+		allowEmpty   bool
+	}
+	type xrow struct {
+		cols     []xcol
+		bgColor  color.Color
+		hasValue bool
+	}
+	var createTable = func(newParagraph bool, rf func() []xrow) {
+		rows := rf()
+		isContentBlank := true
+		for i := 0; i < len(rows); i++ {
+			for j := 0; j < len(rows[i].cols); j++ {
+				if !b.isValueBlank(rows[i].cols[j].value) {
+					isContentBlank = false
+					break
+				}
+			}
+		}
+		if !isContentBlank {
+			if newParagraph {
+				docb.AddParagraph()
+			}
+			docb.AddTable(func(tb *TableBuilder) {
+				tb.SetWidthPercent(100).SetBorders(func(b *Borders) { b.SetBorderAll(bs, bc, bt) })
+				for _, row := range rows {
+					// check if row contains value
+					isRowHasSomeValue := true
+					isRowHasValue := true
+					{
+						count := 0
+						for i := 0; i < len(row.cols); i++ {
+							if !b.isValueBlank(row.cols[i].value) {
+								count++
+							}
+						}
+						isRowHasSomeValue = count > 0
+						isRowHasValue = count == len(row.cols)
+					}
+
+					if (row.hasValue && isRowHasValue) || (!row.hasValue && isRowHasSomeValue) {
+						tb.AddRow(func(rb *RowBuilder) {
+							for _, col := range row.cols {
+								if !b.isValueBlank(col.value) || col.allowEmpty {
+									rb.AddCell(func(cb *CellBuilder) {
+										cb.SetText(col.value)
+										if (row.bgColor != color.Color{}) {
+											cb.SetBackgroundColor(row.bgColor)
+										}
+										if col.bold {
+											cb.SetBold()
+										}
+										if col.colspan > 0 {
+											cb.SetColspan(col.colspan)
+										}
+										if col.widthPercent > 0 {
+											cb.SetWidthPercent(col.widthPercent)
+										}
+										if (col.numbering != document.NumberingDefinition{}) {
+											cb.SetBullet(&col.numbering)
+										}
+										if col.alignment != wml.ST_JcUnset {
+											cb.SetAlignment(col.alignment)
+										}
+									})
+								}
+							}
+						})
+
+					}
+				}
 			})
+		}
+	}
+
+	/* --------------------------------- PROGRAM -------------------------------- */
+	createTable(false, func() []xrow {
+		return []xrow{
+			{cols: []xcol{{value: "Program ID", bold: true, widthPercent: wd}, {value: feature.Id}}, bgColor: c1},
+			{cols: []xcol{{value: "Mode", bold: true}, {value: feature.Mode}}, hasValue: true},
+			{cols: []xcol{{value: "Program Name", bold: true}, {value: feature.Name}}, hasValue: true},
+			{cols: []xcol{{value: "Description", bold: true}, {value: feature.Desc}}, hasValue: true},
+
+			{cols: []xcol{{value: "Program Environment", bold: true, colspan: 2}}, bgColor: c1},
+			{cols: []xcol{{value: "Program Source", bold: true}, {value: feature.Mode}}, hasValue: true},
+			{cols: []xcol{{value: "Language", bold: true}, {value: feature.Env.Languages}}, hasValue: true},
+		}
 	})
 
-	if (feature.Env.Sources != nil && !reflect.ValueOf(feature.Env.Sources).IsZero()) || (feature.Env.Languages != nil && !reflect.ValueOf(feature.Env.Languages).IsZero()) {
-		docb.AddTable(func(tb *TableBuilder) {
-			tb.SetWidthPercent(100).SetBorders(func(b *Borders) { b.SetBorderAll(bs, bc, bt) }).
-				AddRow(func(rb *RowBuilder) {
-					rb.AddCell(func(cb *CellBuilder) {
-						cb.SetText("Program Environment:").SetBold().SetColspan(2).SetBackgroundColor(c1)
-					})
-				})
-			if feature.Env.Sources != nil && !reflect.ValueOf(feature.Env.Sources).IsZero() {
-				tb.AddRow(func(rb *RowBuilder) {
-					rb.
-						AddCell(func(cb *CellBuilder) { cb.SetText("Program Source").SetBold().SetWidth(wd) }).
-						AddCell(func(cb *CellBuilder) { cb.SetText(feature.Env.Sources) })
-				})
-			}
-			if feature.Env.Languages != nil && !reflect.ValueOf(feature.Env.Languages).IsZero() {
-				tb.AddRow(func(rb *RowBuilder) {
-					rb.
-						AddCell(func(cb *CellBuilder) { cb.SetText("Language").SetBold().SetWidth(wd) }).
-						AddCell(func(cb *CellBuilder) { cb.SetText(feature.Env.Languages) })
-				})
-			}
-		})
-	}
-
 	/* -------------------------------- RESOURCE -------------------------------- */
-	if len(feature.Resources) > 0 {
-		docb.AddParagraph().AddTable(func(tb *TableBuilder) {
-			tb.SetWidthPercent(100).SetBorders(func(b *Borders) { b.SetBorderAll(bs, bc, bt) }).
-				AddRow(func(rb *RowBuilder) {
-					rb.AddCell(func(cb *CellBuilder) {
-						cb.SetText("Resource:").SetBold().SetColspan(2).SetBackgroundColor(c1)
-					})
-				})
-			tb.AddRow(func(rb *RowBuilder) {
-				rb.
-					AddCell(func(cb *CellBuilder) { cb.SetText("Table/File").SetBold().SetWidth(wd).SetBackgroundColor(c2) }).
-					AddCell(func(cb *CellBuilder) { cb.SetText("Usage").SetBold().SetBackgroundColor(c2) })
-			})
-			for _, res := range feature.Resources {
-				tb.AddRow(func(rb *RowBuilder) {
-					rb.
-						AddCell(func(cb *CellBuilder) { cb.SetText(res.Name).SetWidth(wd) }).
-						AddCell(func(cb *CellBuilder) { cb.SetText(res.Usage) })
-				})
-			}
-		})
-	}
+	createTable(true, func() []xrow {
+		var content []xrow
+		if len(feature.Resources) > 0 {
+			content = append(content,
+				xrow{cols: []xcol{{value: "Resource", bold: true, colspan: 2}}, bgColor: c1},
+				xrow{cols: []xcol{{value: "Table/File", bold: true}, {value: "Usage", bold: true}}, bgColor: c2},
+			)
+		}
+		for _, res := range feature.Resources {
+			content = append(content, xrow{cols: []xcol{{value: res.Name}, {value: res.Usage}}})
+		}
+		return content
+	})
 
 	/* --------------------------------- SCREEN --------------------------------- */
 	if len(feature.Screens) > 0 {
@@ -184,12 +222,12 @@ func (b *Builder) buildFeature(docb *DocumentBuilder, feature *Feature) error {
 					tb.SetWidthPercent(100).SetBorders(func(b *Borders) { b.SetBorderAll(bs, bc, bt) }).
 						AddRow(func(rb *RowBuilder) {
 							rb.
-								AddCell(func(cb *CellBuilder) { cb.SetText("Screen ID").SetBold().SetWidth(wd).SetBackgroundColor(c2) }).
+								AddCell(func(cb *CellBuilder) { cb.SetText("Screen ID").SetBold().SetWidthPercent(wd).SetBackgroundColor(c2) }).
 								AddCell(func(cb *CellBuilder) { cb.SetText("Name").SetBold().SetBackgroundColor(c2) })
 						})
 					tb.AddRow(func(rb *RowBuilder) {
 						rb.
-							AddCell(func(cb *CellBuilder) { cb.SetText(scr.Id).SetWidth(wd) }).
+							AddCell(func(cb *CellBuilder) { cb.SetText(scr.Id).SetWidthPercent(wd) }).
 							AddCell(func(cb *CellBuilder) { cb.SetText(scr.Name) })
 					})
 					if xstrings.IsNotBlank(scr.Image.File) {
@@ -209,98 +247,81 @@ func (b *Builder) buildFeature(docb *DocumentBuilder, feature *Feature) error {
 	}
 
 	/* ---------------------------------- INPUT --------------------------------- */
-	if len(feature.Input) > 0 {
-		docb.AddParagraph().AddTable(func(tb *TableBuilder) {
-			tb.SetWidthPercent(100).SetBorders(func(b *Borders) { b.SetBorderAll(bs, bc, bt) }).
-				AddRow(func(rb *RowBuilder) {
-					rb.AddCell(func(cb *CellBuilder) {
-						cb.SetText("Input:").SetBold().SetColspan(2).SetBackgroundColor(c1)
-					})
-				})
-			for i, inp := range feature.Input {
-				tb.AddRow(func(rb *RowBuilder) {
-					rb.AddCell(func(cb *CellBuilder) {
-						cb.SetText(fmt.Sprintf("%d. %s", i+1, inp.Name)).SetBold().SetColspan(2).SetBackgroundColor(c2)
-					})
-				})
-				if inp.Fields != nil && !reflect.ValueOf(inp.Fields).IsZero() {
-					tb.AddRow(func(rb *RowBuilder) {
-						rb.
-							AddCell(func(cb *CellBuilder) { cb.SetText("Fields").SetBold().SetWidth(wd) }).
-							AddCell(func(cb *CellBuilder) { cb.SetText(inp.Fields) })
-					})
-				}
-				if inp.Constraints != nil && !reflect.ValueOf(inp.Constraints).IsZero() {
-					tb.AddRow(func(rb *RowBuilder) {
-						rb.
-							AddCell(func(cb *CellBuilder) { cb.SetText("Constraints").SetBold().SetWidth(wd) }).
-							AddCell(func(cb *CellBuilder) { cb.SetText(inp.Constraints) })
-					})
-				}
-				if inp.Remarks != nil && !reflect.ValueOf(inp.Remarks).IsZero() {
-					tb.AddRow(func(rb *RowBuilder) {
-						rb.
-							AddCell(func(cb *CellBuilder) { cb.SetText("Remarks").SetBold().SetWidth(wd) }).
-							AddCell(func(cb *CellBuilder) { cb.SetText(inp.Remarks) })
-					})
-				}
+	createTable(true, func() []xrow {
+		var content []xrow
+		if len(feature.Input) > 0 {
+			content = append(content, xrow{cols: []xcol{{value: "Input", bold: true, colspan: 2, widthPercent: wd}}, bgColor: c1})
+		}
+		for i, input := range feature.Input {
+			content = append(content,
+				xrow{cols: []xcol{{value: fmt.Sprintf("%d. %s", i+1, input.Name), bold: true, colspan: 2}}, bgColor: c2},
+				xrow{cols: []xcol{{value: "Fields", bold: true}, {value: input.Fields}}, hasValue: true},
+				xrow{cols: []xcol{{value: "Constraints", bold: true}, {value: input.Constraints}}, hasValue: true},
+				xrow{cols: []xcol{{value: "Remarks", bold: true}, {value: input.Remarks}}, hasValue: true},
+			)
+		}
+		return content
+	})
+
+	/* ------------------------------- PARAMETERS ------------------------------- */
+	createTable(true, func() []xrow {
+		var content []xrow
+		if len(feature.Parameters) > 0 {
+			content = append(content,
+				xrow{cols: []xcol{{value: "Parameters", bold: true, colspan: 5}}, bgColor: c1},
+				xrow{cols: []xcol{
+					{value: "ID", bold: true},
+					{value: "Fields", bold: true}, {value: "Data Items"}, {value: "I/O", bold: true, alignment: wml.ST_JcCenter}, {value: "Processing Remarks", bold: true},
+				}, bgColor: c2},
+			)
+			for i, param := range feature.Parameters {
+				content = append(content, xrow{cols: []xcol{
+					{value: fmt.Sprintf("%d", i+1)},
+					{value: param.Field, allowEmpty: true},
+					{value: param.Data, allowEmpty: true},
+					{value: param.IO, allowEmpty: true},
+					{value: param.Remarks, allowEmpty: true},
+				}})
 			}
-		})
-	}
+		}
+		return content
+	})
 
 	/* -------------------------------- SCENARIO -------------------------------- */
-	if len(feature.Scenarios) > 0 {
-		docb.AddParagraph().AddTable(func(tb *TableBuilder) {
-			tb.SetWidthPercent(100).SetBorders(func(b *Borders) { b.SetBorderAll(bs, bc, bt) }).
-				AddRow(func(rb *RowBuilder) {
-					rb.AddCell(func(cb *CellBuilder) {
-						cb.SetText("Scenarios and Processing Logic:").SetBold().SetColspan(2).SetBackgroundColor(c1)
-					})
-				})
-			for i, scn := range feature.Scenarios {
-				tb.AddRow(func(rb *RowBuilder) {
-					rb.AddCell(func(cb *CellBuilder) {
-						cb.SetText(fmt.Sprintf("%d. %s", i+1, scn.Name)).SetBold().SetColspan(2).SetBackgroundColor(c2)
-					})
-				})
-				for _, action := range scn.Desc {
-					keyword, others := b.splitGherkinWord(action)
-					tb.AddRow(func(rb *RowBuilder) {
-						rb.
-							AddCell(func(cb *CellBuilder) { cb.SetText(keyword).SetBold().SetAlignment(wml.ST_JcLeft).SetWidth(10) }).
-							AddCell(func(cb *CellBuilder) { cb.SetText(others) })
-					})
-				}
+	createTable(true, func() []xrow {
+		var content []xrow
+		if len(feature.Scenarios) > 0 {
+			content = append(content, xrow{cols: []xcol{{value: "Scenarios and Processign Logic", bold: true, colspan: 2}}, bgColor: c1})
+		}
+		for i, scn := range feature.Scenarios {
+			content = append(content, xrow{cols: []xcol{{value: fmt.Sprintf("%d. %s", i+1, scn.Name), bold: true, colspan: 2}}, bgColor: c2})
+			for _, action := range scn.Desc {
+				keyword, others := b.splitGherkinWord(action)
+				content = append(content, xrow{cols: []xcol{{value: keyword, bold: true, widthPercent: 10}, {value: others}}})
 			}
-		})
-
-	}
-
-	/* --------------------------------- REMARKS -------------------------------- */
-	if feature.Remarks != nil && !reflect.ValueOf(feature.Remarks).IsZero() {
-		docb.AddParagraph().AddTable(func(tb *TableBuilder) {
-			tb.SetWidthPercent(100).SetBorders(func(b *Borders) { b.SetBorderAll(bs, bc, bt) }).
-				AddRow(func(rb *RowBuilder) {
-					rb.AddCell(func(cb *CellBuilder) {
-						cb.SetText("Remarks:").SetBold().SetColspan(2).SetBackgroundColor(c1)
-					})
-				}).AddRow(func(rb *RowBuilder) {
-				rb.AddCell(func(cb *CellBuilder) {
-					cb.SetText(feature.Remarks).SetBullet(&nd)
-				})
-			})
-		})
-	}
+		}
+		return content
+	})
 
 	/* --------------------------------- OTHERS --------------------------------- */
-	// if !b.isInterfaceBlank(feature.Others.Limits) || !b.isInterfaceBlank(feature.Others.Reference) || !b.isInterfaceBlank(feature.Others.Remarks) {
-	// 	docb.AddParagraph()
-	// 	if !b.isInterfaceBlank(feature.Others.Reference) {
-	// 		docb.AddTable(func(tb *TableBuilder) {
+	createTable(true, func() []xrow {
+		var content []xrow
 
-	// 		})
-	// 	}
-	// }
+		textMap := map[string]string{"Reference": "External Reference", "Limits": "Program Limits", "Remarks": "Remarks"}
+		flds := reflect.VisibleFields(reflect.TypeOf(feature.Others))
+		for _, fld := range flds {
+			for _, index := range fld.Index {
+				value := reflect.ValueOf(feature.Others).Field(index)
+				if !value.IsNil() {
+					content = append(content,
+						xrow{cols: []xcol{{value: textMap[fld.Name]}}, bgColor: c1},
+						xrow{cols: []xcol{{value: value.Interface(), numbering: nd}}},
+					)
+				}
+			}
+		}
+		return content
+	})
 
 	return nil
 }
@@ -346,6 +367,19 @@ func (b *Builder) splitGherkinWord(s string) (string, string) {
 	return "", s
 }
 
-func (b *Builder) isInterfaceBlank(value interface{}) bool {
+func (b *Builder) isValueBlank(value interface{}) bool {
 	return value == nil || reflect.ValueOf(value).IsZero()
+}
+
+func (b *Builder) isAllFieldsInStructEmpty(value interface{}) bool {
+	flds := reflect.VisibleFields(reflect.TypeOf(value))
+	for _, fld := range flds {
+		for _, index := range fld.Index {
+			value := reflect.ValueOf(value).Field(index)
+			if !value.IsNil() {
+				return false
+			}
+		}
+	}
+	return true
 }

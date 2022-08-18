@@ -9,17 +9,17 @@ type Module struct {
 	Features []Feature `yaml:"features,omitempty"`
 }
 type Feature struct {
-	Id        interface{} `yaml:"id,omitempty"`
-	Name      interface{} `yaml:"name,omitempty"`
-	Mode      interface{} `yaml:"mode,omitempty"`
-	Desc      interface{} `yaml:"desc,omitempty"`
-	Env       Env         `yaml:"env,omitempty"`
-	Resources []Resource  `yaml:"resources,omitempty"`
-	Screens   []Screen    `yaml:"screens,omitempty"`
-	Input     []Input     `yaml:"input,omitempty"`
-	Scenarios []Scenario  `yaml:"scenarios,omitempty"`
-	Remarks   interface{} `yaml:"remarks,omitempty"`
-	Others    Others      `yaml:"others,omitempty"`
+	Id         interface{} `yaml:"id,omitempty"`
+	Name       interface{} `yaml:"name,omitempty"`
+	Mode       interface{} `yaml:"mode,omitempty"`
+	Desc       interface{} `yaml:"desc,omitempty"`
+	Env        Env         `yaml:"env,omitempty"`
+	Resources  []Resource  `yaml:"resources,omitempty"`
+	Screens    []Screen    `yaml:"screens,omitempty"`
+	Input      []Input     `yaml:"input,omitempty"`
+	Parameters []Parameter `yaml:"parameters,omitempty"`
+	Scenarios  []Scenario  `yaml:"scenarios,omitempty"`
+	Others     Others      `yaml:"others,omitempty"`
 }
 
 type Env struct {
@@ -40,6 +40,12 @@ type Input struct {
 	Fields      interface{} `yaml:"fields,omitempty"`
 	Constraints interface{} `yaml:"cons,omitempty"`
 	Remarks     interface{} `yaml:"remarks,omitempty"`
+}
+type Parameter struct {
+	Field   interface{} `yaml:"field,omitempty"`
+	Data    interface{} `yaml:"data,omitempty"`
+	IO      interface{} `yaml:"io,omitempty"`
+	Remarks interface{} `yaml:"remarks,omitempty"`
 }
 type Scenario struct {
 	Name interface{} `yaml:"name,omitempty"`
