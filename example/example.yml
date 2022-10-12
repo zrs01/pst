@@ -12,6 +12,7 @@ modules:
         env:
           sources: ["Package: User", "Controller: registration"]
           langs: ["HTML, Javascript, JEE, JSP"]
+        amendment: Nil
         resources:
           - { name: TB_USER_MASTER, usage: "Insert, Read" }
           - { name: TB_USER_ROLE_MAPPING, usage: Insert }
@@ -54,7 +55,7 @@ modules:
           - { field: English Name, data: TB_USER_MASTER.USER_NAME, io: I }
           - { field: Chinese Name, data: TB_USER_MASTER.USER_NAME_TC, io: I }
           - { field: Mailing Address, data: TB_USER_MASTER.USER_ADDR1, TB_USER_MASTER.USER_ADDR2, io: I }
-          - { field: Full HKID Card Number / Passport No., data: TB_USER_MASTER.HKID_NO / TB_USER_MASTER.PASSPORT_NO, io: I, remarks: Encrypted with AES-256}
+          - { field: Full HKID Card Number / Passport No., data: TB_USER_MASTER.HKID_NO / TB_USER_MASTER.PASSPORT_NO, io: I, remarks: Encrypted with AES-256 }
           - { field: Telephone Number, data: TB_USER_MASTER.USER_PHONE, io: I }
           - { field: Fax, data: TB_USER_MASTER.USER_FAX, io: I }
           - { field: Captcha (Verification Code), data: Nil, io: I }
@@ -93,9 +94,13 @@ modules:
         others:
           reference: Nil
           limits: Nil
+          program: Nil
           remarks:
             - Password length is 10 and formed with uppercase characters, lowercase characters and digits.
             - Password and HKID to be encrypted in AES-256 algorithm with a 32 characters key.
+        tests:
+          - { desc: "Exist registration submit", expect: "Error occur", actual: "Error occur" }
+          - { desc: "New registration submit", expect: "Account created", actual: "Account created" }
 
       - id: UF011A
         name: Enable User Login through iAM Smart

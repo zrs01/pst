@@ -14,12 +14,14 @@ type Feature struct {
 	Mode       interface{} `yaml:"mode,omitempty"`
 	Desc       interface{} `yaml:"desc,omitempty"`
 	Env        Env         `yaml:"env,omitempty"`
+	Amendment  interface{} `yaml:"amendment,omitempty"`
 	Resources  []Resource  `yaml:"resources,omitempty"`
 	Screens    []Screen    `yaml:"screens,omitempty"`
 	Input      []Input     `yaml:"input,omitempty"`
 	Parameters []Parameter `yaml:"parameters,omitempty"`
 	Scenarios  []Scenario  `yaml:"scenarios,omitempty"`
 	Others     Others      `yaml:"others,omitempty"`
+	Tests      []Test      `yaml:"tests,omitempty"`
 }
 
 type Env struct {
@@ -58,5 +60,11 @@ type Image struct {
 type Others struct {
 	Reference interface{} `yaml:"reference,omitempty"`
 	Limits    interface{} `yaml:"limits,omitempty"`
+	Program   interface{} `yaml:"program,omitempty"`
 	Remarks   interface{} `yaml:"remarks,omitempty"`
+}
+type Test struct {
+	Desc   interface{} `yaml:"desc,omitempty"`
+	Expect interface{} `yaml:"expect,omitempty"`
+	Actual interface{} `yaml:"actual,omitempty"`
 }

@@ -181,16 +181,23 @@ func (b *Builder) constructFeature(docb *DocumentBuilder, feature *Feature) erro
 
 	/* --------------------------------- PROGRAM -------------------------------- */
 	createTable(false, func() []xrow {
-		return []xrow{
+		result := []xrow{
 			{cols: []xcol{{value: "Program ID", bold: true, widthPercent: wd}, {value: feature.Id}}, bgColor: c1},
 			{cols: []xcol{{value: "Mode", bold: true}, {value: feature.Mode}}, hasValue: true},
 			{cols: []xcol{{value: "Program Name", bold: true}, {value: feature.Name}}, hasValue: true},
 			{cols: []xcol{{value: "Description", bold: true}, {value: feature.Desc}}, hasValue: true},
 
-			{cols: []xcol{{value: "Program Environment", bold: true, colspan: 2}}, bgColor: c1},
+			{cols: []xcol{{value: "Program Environment:", bold: true, colspan: 2}}, bgColor: c1},
 			{cols: []xcol{{value: "Program Source", bold: true}, {value: feature.Mode}}, hasValue: true},
 			{cols: []xcol{{value: "Language", bold: true}, {value: feature.Env.Languages}}, hasValue: true},
 		}
+		if !b.isValueBlank(feature.Amendment) {
+			result = append(result,
+				xrow{cols: []xcol{{value: "Amendment History:", bold: true, colspan: 2}}, bgColor: c1},
+				xrow{cols: []xcol{{value: feature.Amendment, colspan: 2}}, hasValue: true},
+			)
+		}
+		return result
 	})
 
 	/* -------------------------------- RESOURCE -------------------------------- */
@@ -198,7 +205,7 @@ func (b *Builder) constructFeature(docb *DocumentBuilder, feature *Feature) erro
 		var content []xrow
 		if len(feature.Resources) > 0 {
 			content = append(content,
-				xrow{cols: []xcol{{value: "Resource", bold: true, colspan: 2}}, bgColor: c1},
+				xrow{cols: []xcol{{value: "File Usage:", bold: true, colspan: 2}}, bgColor: c1},
 				xrow{cols: []xcol{{value: "Table/File", bold: true}, {value: "Usage", bold: true}}, bgColor: c2},
 			)
 		}
@@ -214,7 +221,7 @@ func (b *Builder) constructFeature(docb *DocumentBuilder, feature *Feature) erro
 			tb.SetWidthPercent(100).SetBorders(func(b *Borders) { b.SetBorderAll(bs, bc, bt) }).
 				AddRow(func(rb *RowBuilder) {
 					rb.AddCell(func(cb *CellBuilder) {
-						cb.SetText("Screen:").SetBold().SetColspan(2).SetBackgroundColor(c1)
+						cb.SetText("Screen Used:").SetBold().SetColspan(2).SetBackgroundColor(c1)
 					})
 				})
 			for _, scr := range feature.Screens {
@@ -250,7 +257,7 @@ func (b *Builder) constructFeature(docb *DocumentBuilder, feature *Feature) erro
 	createTable(true, func() []xrow {
 		var content []xrow
 		if len(feature.Input) > 0 {
-			content = append(content, xrow{cols: []xcol{{value: "Input", bold: true, colspan: 2, widthPercent: wd}}, bgColor: c1})
+			content = append(content, xrow{cols: []xcol{{value: "Input:", bold: true, colspan: 2, widthPercent: wd}}, bgColor: c1})
 		}
 		for i, input := range feature.Input {
 			content = append(content,
@@ -268,10 +275,10 @@ func (b *Builder) constructFeature(docb *DocumentBuilder, feature *Feature) erro
 		var content []xrow
 		if len(feature.Parameters) > 0 {
 			content = append(content,
-				xrow{cols: []xcol{{value: "Parameters", bold: true, colspan: 5}}, bgColor: c1},
+				xrow{cols: []xcol{{value: "Input Parameters:", bold: true, colspan: 5}}, bgColor: c1},
 				xrow{cols: []xcol{
-					{value: "ID", bold: true},
-					{value: "Fields", bold: true}, {value: "Data Items"}, {value: "I/O", bold: true, alignment: wml.ST_JcCenter}, {value: "Processing Remarks", bold: true},
+					{value: "Input #", bold: true},
+					{value: "Fields", bold: true}, {value: "Data Items", bold: true}, {value: "I/O", bold: true, alignment: wml.ST_JcCenter}, {value: "Processing Remarks", bold: true},
 				}, bgColor: c2},
 			)
 			for i, param := range feature.Parameters {
@@ -291,7 +298,7 @@ func (b *Builder) constructFeature(docb *DocumentBuilder, feature *Feature) erro
 	createTable(true, func() []xrow {
 		var content []xrow
 		if len(feature.Scenarios) > 0 {
-			content = append(content, xrow{cols: []xcol{{value: "Scenarios and Processign Logic", bold: true, colspan: 2}}, bgColor: c1})
+			content = append(content, xrow{cols: []xcol{{value: "Processign Logic:", bold: true, colspan: 2}}, bgColor: c1})
 		}
 		for i, scn := range feature.Scenarios {
 			content = append(content, xrow{cols: []xcol{{value: fmt.Sprintf("%d. %s", i+1, scn.Name), bold: true, colspan: 2}}, bgColor: c2})
@@ -307,7 +314,7 @@ func (b *Builder) constructFeature(docb *DocumentBuilder, feature *Feature) erro
 	createTable(true, func() []xrow {
 		var content []xrow
 
-		textMap := map[string]string{"Reference": "External Reference", "Limits": "Program Limits", "Remarks": "Remarks"}
+		textMap := map[string]string{"Reference": "External Reference:", "Limits": "Program Limits:", "Program": "Program Listing:", "Remarks": "Remarks:"}
 		flds := reflect.VisibleFields(reflect.TypeOf(feature.Others))
 		for _, fld := range flds {
 			for _, index := range fld.Index {
@@ -318,6 +325,28 @@ func (b *Builder) constructFeature(docb *DocumentBuilder, feature *Feature) erro
 						xrow{cols: []xcol{{value: value.Interface(), numbering: nd}}},
 					)
 				}
+			}
+		}
+		return content
+	})
+
+	/* ---------------------------------- TESTS --------------------------------- */
+	createTable(true, func() []xrow {
+		var content []xrow
+		if len(feature.Tests) > 0 {
+			content = append(content,
+				xrow{cols: []xcol{{value: "Unit Test Records:", bold: true, colspan: 4}}, bgColor: c1},
+				xrow{cols: []xcol{
+					{value: "Test #", bold: true},
+					{value: "Test Description", bold: true}, {value: "Expected Result", bold: true}, {value: "Actual Result", bold: true}}, bgColor: c2},
+			)
+			for i, param := range feature.Tests {
+				content = append(content, xrow{cols: []xcol{
+					{value: fmt.Sprintf("%d", i+1)},
+					{value: param.Desc, allowEmpty: true},
+					{value: param.Expect, allowEmpty: true},
+					{value: param.Actual, allowEmpty: true},
+				}})
 			}
 		}
 		return content
