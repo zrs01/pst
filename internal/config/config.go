@@ -1,4 +1,4 @@
-package converter
+package config
 
 import (
 	"github.com/jinzhu/configor"

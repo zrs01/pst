@@ -1,5 +1,22 @@
 # Program Specification Tools
-Tool to generate program specification document in .docx format
+Tool to generate program specification document from .yml to .docx
+
+Note: the string in the .yml (except `module/name` and `scenarios/desc`) allow input string or string array.
+
+e.g.
+```yml
+...
+# single string
+  name: this is single line of string
+# array of string
+  name: [first line, second line]
+  # or
+  name:
+    - first line
+    - second line
+...
+```
+
 
 ## Usage
 
@@ -41,7 +58,7 @@ $ pst -i sample.yml -o sample.docx -m spec.docx
 # -- Support multiple files
 $ pst -i sample1.yml,sample2.yml,sample3.yml -o sample.docx
 
-# -- Support wildcard input files
+# -- Support wildcard input files (sorted by ascending)
 $ pst -i samp*.yml -o sample.docx
 ```
 
@@ -53,8 +70,8 @@ You may create configuration file to custom the properties of the output
 Create a file `config.yml` with below content
 
 ```yml
-# font name, e.g. Calibre. Default: Arial
-fontfamily: Arial
+# font name, e.g. Calibri. Default: Arial
+fontfamily: Calibri
 # font size. Default: 10
 fontsize: 10
 logging:
